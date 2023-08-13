@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common'
 import { Cron } from '@nestjs/schedule'
-import { WsMessageAggTradeRaw, numberInString } from 'binance'
+import { DatabaseService } from '@database/database.service'
+import { numberInString, WsMessageAggTradeRaw } from 'binance'
 import { BinanceWebSocketService } from 'src/binance/BinanceWebsocketService'
 import { IFootPrintCandle } from 'src/types'
 
@@ -8,7 +9,7 @@ import { IFootPrintCandle } from 'src/types'
 export class BinanceService {
   private activeCandles: IFootPrintCandle[] = []
   private closedCandles: IFootPrintCandle[] = []
-  constructor(private readonly binanceWsService: BinanceWebSocketService) {}
+  constructor(private readonly databaseService: DatabaseService, private readonly binanceWsService: BinanceWebSocketService) {}
 
   async onModuleInit() {
     this.binanceWsService.subscribeToTrades('BTCUSDT', 'usdm')

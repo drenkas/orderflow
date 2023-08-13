@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common'
 import { Cron } from '@nestjs/schedule'
+import { DatabaseService } from '@database/database.service'
 import { BybitWebSocketService } from 'src/bybit/BybitWebsocketService'
 import { TradeData } from 'src/bybit/websocket.responses'
 import { IFootPrintCandle } from 'src/types'
@@ -8,7 +9,7 @@ import { IFootPrintCandle } from 'src/types'
 export class ByBitService {
   private activeCandles: IFootPrintCandle[] = []
   private closedCandles: IFootPrintCandle[] = []
-  constructor(private readonly bybitWsService: BybitWebSocketService) {}
+  constructor(private readonly databaseService: DatabaseService, private readonly bybitWsService: BybitWebSocketService) {}
 
   async onModuleInit() {
     const topics: string[] = ['publicTrade.BTCUSDT']
