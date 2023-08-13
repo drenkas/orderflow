@@ -1,27 +1,25 @@
-/* eslint-disable @typescript-eslint/no-empty-function */
 import { Injectable } from '@nestjs/common'
 import { Observable, Subject } from 'rxjs'
-import { WebsocketClient, WsMessageTradeRaw } from 'binance'
-import { TradeData } from 'src/binance/websocket.responses'
+import { WebsocketClient, WsMessageAggTradeRaw } from 'binance'
 
 @Injectable()
 export class BinanceWebSocketService {
   private ws: WebsocketClient
-  private tradeUpdates$: Subject<TradeData> = new Subject()
+  private tradeUpdates$: Subject<WsMessageAggTradeRaw> = new Subject()
   TradeData
   constructor() {
     this.initWebSocket()
   }
 
-  get tradeUpdates(): Observable<TradeData> {
+  get tradeUpdates(): Observable<WsMessageAggTradeRaw> {
     return this.tradeUpdates$.asObservable()
   }
 
   private initWebSocket(): void {
     this.ws = new WebsocketClient({})
 
-    this.ws.on('message', (message: WsMessageTradeRaw) => {
-      this.tradeUpdates$.next(message as TradeData)
+    this.ws.on('message', (message: WsMessageAggTradeRaw) => {
+      this.tradeUpdates$.next(message)
     })
 
     this.ws.on('open', (data) => {
@@ -42,6 +40,6 @@ export class BinanceWebSocketService {
   }
 
   public subscribeToTrades(symbol: string, market: 'spot' | 'usdm' | 'coinm'): void {
-    this.ws.subscribeTrades(symbol, market)
+    this.ws.subscribeAggregateTrades(symbol, market)
   }
 }
