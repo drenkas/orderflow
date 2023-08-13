@@ -28,6 +28,7 @@ export class ByBitService {
   async processCandles() {
     this.closeLastCandle()
     this.createNewCandle()
+    await this.persistCandlesToStorage()
   }
 
   get lastCandle(): IFootPrintCandle {
@@ -60,8 +61,11 @@ export class ByBitService {
   }
 
   private createNewCandle() {
+    const now = new Date()
+    now.setSeconds(0, 0)
+
     this.activeCandles.push({
-      timestamp: new Date().toISOString(),
+      timestamp: now.toISOString(),
       interval: '1m',
       delta: 0,
       volume: 0,
@@ -76,6 +80,14 @@ export class ByBitService {
     if (this.activeCandles.length > 0) {
       const candleToClose = this.activeCandles.pop()
       this.closedCandles.push(candleToClose)
+    }
+  }
+
+  private async persistCandlesToStorage() {
+    if (this.closedCandles.length > 0) {
+      for (let i = 0; i < this.closedCandles.length; i++) {
+        await this.databaseService.saveFootPrintCandle(this.closeLastCandle[i])
+      }
     }
   }
 }

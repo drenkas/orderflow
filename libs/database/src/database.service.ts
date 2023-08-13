@@ -10,7 +10,11 @@ export class DatabaseService {
     private footprintCandleRepository: Repository<FootPrintCandle>
   ) {}
 
-  async insertFootPrintCandle(candle: FootPrintCandle): Promise<FootPrintCandle> {
-    return await this.footprintCandleRepository.save(candle)
+  async saveFootPrintCandle(candle: FootPrintCandle): Promise<void> {
+    try {
+      await this.footprintCandleRepository.save(candle)
+    } catch (error) {
+      console.error('Error bulk inserting FootPrintCandles:', error)
+    }
   }
 }
