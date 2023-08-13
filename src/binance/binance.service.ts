@@ -56,6 +56,7 @@ export class BinanceService {
   private createNewCandle() {
     this.activeCandles.push({
       timestamp: new Date().toISOString(),
+      interval: '1m',
       delta: 0,
       volume: 0,
       high: null,
