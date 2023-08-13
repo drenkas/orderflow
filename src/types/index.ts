@@ -3,6 +3,8 @@ export interface IFootPrintCandle {
   symbol: string
   delta: number
   volume: number
+  high: number
+  low: number
   bid: IPriceVolume
   ask: IPriceVolume
 }

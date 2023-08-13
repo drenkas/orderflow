@@ -39,6 +39,10 @@ export class BinanceService {
 
     // Update or initialize the bid/ask price volume
     lastCandle[targetSide][price] = (lastCandle[targetSide][price] || 0) + volume
+
+    // Update high and low
+    lastCandle.high = lastCandle.high ? Math.max(lastCandle.high, Number(price)) : Number(price)
+    lastCandle.low = lastCandle.low ? Math.min(lastCandle.low, Number(price)) : Number(price)
   }
 
   private createNewCandle() {
@@ -46,6 +50,8 @@ export class BinanceService {
       timestamp: new Date().toISOString(),
       delta: 0,
       volume: 0,
+      high: null,
+      low: null,
       bid: {},
       ask: {}
     } as IFootPrintCandle)
