@@ -1,11 +1,13 @@
 import { Injectable } from '@nestjs/common'
+import { Cron } from '@nestjs/schedule'
 import { BybitWebSocketService } from 'src/bybit/BybitWebsocketService'
 import { TradeData } from 'src/bybit/websocket.responses'
 import { IFootPrintCandle } from 'src/types'
 
 @Injectable()
 export class ByBitService {
-  private candles: IFootPrintCandle[] = []
+  private activeCandles: IFootPrintCandle[] = []
+  private closedCandles: IFootPrintCandle[] = []
   constructor(private readonly bybitWsService: BybitWebSocketService) {}
 
   async onModuleInit() {
@@ -21,11 +23,19 @@ export class ByBitService {
     })
   }
 
+  @Cron('* * * * *') // Every 1 minute
+  async processCandles() {
+    this.closeLastCandle()
+    this.createNewCandle()
+  }
+
   get lastCandle(): IFootPrintCandle {
-    return this.candles[this.candles.length - 1]
+    return this.activeCandles[this.activeCandles.length - 1]
   }
 
   private updateLastCandle(side: string, positionSize: string, price: string) {
+    if (!this.lastCandle) return
+
     const lastCandle = this.lastCandle
 
     const volume = parseFloat(positionSize)
@@ -49,12 +59,19 @@ export class ByBitService {
   }
 
   private createNewCandle() {
-    this.candles.push({
+    this.activeCandles.push({
       timestamp: new Date().toISOString(),
       delta: 0,
       volume: 0,
       bid: {},
       ask: {}
     } as IFootPrintCandle)
+  }
+
+  private closeLastCandle() {
+    if (this.activeCandles.length > 0) {
+      const candleToClose = this.activeCandles.pop()
+      this.closedCandles.push(candleToClose)
+    }
   }
 }

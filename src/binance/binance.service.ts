@@ -1,11 +1,13 @@
 import { Injectable } from '@nestjs/common'
+import { Cron } from '@nestjs/schedule'
 import { WsMessageAggTradeRaw, numberInString } from 'binance'
 import { BinanceWebSocketService } from 'src/binance/BinanceWebsocketService'
 import { IFootPrintCandle } from 'src/types'
 
 @Injectable()
 export class BinanceService {
-  private candles: IFootPrintCandle[] = []
+  private activeCandles: IFootPrintCandle[] = []
+  private closedCandles: IFootPrintCandle[] = []
   constructor(private readonly binanceWsService: BinanceWebSocketService) {}
 
   async onModuleInit() {
@@ -18,8 +20,14 @@ export class BinanceService {
     })
   }
 
+  @Cron('* * * * *') // Every 1 minute
+  async processCandles() {
+    this.closeLastCandle()
+    this.createNewCandle()
+  }
+
   get lastCandle(): IFootPrintCandle {
-    return this.candles[this.candles.length - 1]
+    return this.activeCandles[this.activeCandles.length - 1]
   }
 
   private updateLastCandle(isBuyerMM: boolean, positionSize: numberInString, price: numberInString) {
@@ -46,7 +54,7 @@ export class BinanceService {
   }
 
   private createNewCandle() {
-    this.candles.push({
+    this.activeCandles.push({
       timestamp: new Date().toISOString(),
       delta: 0,
       volume: 0,
@@ -55,5 +63,12 @@ export class BinanceService {
       bid: {},
       ask: {}
     } as IFootPrintCandle)
+  }
+
+  private closeLastCandle() {
+    if (this.activeCandles.length > 0) {
+      const candleToClose = this.activeCandles.pop()
+      this.closedCandles.push(candleToClose)
+    }
   }
 }

@@ -5,10 +5,10 @@ export interface IFootPrintCandle {
   volume: number
   high: number
   low: number
-  bid: IPriceVolume
-  ask: IPriceVolume
+  bid: IOrderRow
+  ask: IOrderRow
 }
 
-interface IPriceVolume {
+interface IOrderRow {
   [price: string]: number;
 }
