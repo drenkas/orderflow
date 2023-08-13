@@ -61,6 +61,7 @@ export class BinanceService {
     now.setSeconds(0, 0)
 
     this.activeCandles.push({
+      id: crypto.randomUUID(),
       timestamp: now.toISOString(),
       symbol: 'BTCUSDT',
       exchange: Exchange.BINANCE,
@@ -82,10 +83,15 @@ export class BinanceService {
   }
 
   private async persistCandlesToStorage() {
-    if (this.closedCandles.length > 0) {
-      for (let i = 0; i < this.closedCandles.length; i++) {
-        await this.databaseService.saveFootPrintCandle(this.closeLastCandle[i])
+    const successfulIds: string[] = []
+
+    for (let i = 0; i < this.closedCandles.length; i++) {
+      const isSaved = await this.databaseService.saveFootPrintCandle(this.closedCandles[i])
+      if (isSaved) {
+        successfulIds.push(this.closedCandles[i].id)
       }
     }
+
+    this.closedCandles = this.closedCandles.filter((candle) => !successfulIds.includes(candle.id))
   }
 }
