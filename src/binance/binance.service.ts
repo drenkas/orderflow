@@ -3,6 +3,7 @@ import { Cron } from '@nestjs/schedule'
 import { DatabaseService } from '@database/database.service'
 import { numberInString, WsMessageAggTradeRaw } from 'binance'
 import { BinanceWebSocketService } from 'src/binance/BinanceWebsocketService'
+import { Exchange } from 'src/constants/exchanges'
 import { IFootPrintCandle } from 'src/types'
 
 @Injectable()
@@ -61,6 +62,8 @@ export class BinanceService {
 
     this.activeCandles.push({
       timestamp: now.toISOString(),
+      symbol: 'BTCUSDT',
+      exchange: Exchange.BINANCE,
       interval: '1m',
       delta: 0,
       volume: 0,

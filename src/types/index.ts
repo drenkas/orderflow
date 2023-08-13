@@ -2,6 +2,7 @@ export interface IFootPrintCandle {
   timestamp: string
   interval: string
   symbol: string
+  exchange: string
   delta: number
   volume: number
   high: number

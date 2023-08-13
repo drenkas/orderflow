@@ -11,6 +11,9 @@ export class FootPrintCandle {
   timestamp: Date
 
   @Column()
+  exchange: string
+
+  @Column()
   interval: string
 
   @Column()
