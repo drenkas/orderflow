@@ -25,6 +25,12 @@ export class FootPrintCandle {
   @Column('double precision')
   volume: number
 
+  @Column('double precision', { default: 0 })
+  aggressiveBid: number
+
+  @Column('double precision', { default: 0 })
+  aggressiveAsk: number
+
   @Column('double precision')
   high: number
 

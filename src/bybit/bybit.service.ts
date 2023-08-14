@@ -20,7 +20,7 @@ export class ByBitService {
 
     this.bybitWsService.tradeUpdates.subscribe((trades: TradeData[]) => {
       for (let i = 0; i < trades.length; i++) {
-        this.updateLastCandle(trades[i].S, trades[i].v, trades[i].p)
+        this.updateLastCandle(trades[i].S, trades[i].v, trades[i].p, trades[i].L)
       }
     })
   }
@@ -36,7 +36,7 @@ export class ByBitService {
     return this.activeCandles[this.activeCandles.length - 1]
   }
 
-  private updateLastCandle(side: string, positionSize: string, price: string) {
+  private updateLastCandle(side: string, positionSize: string, price: string, direction: string) {
     if (!this.lastCandle) return
 
     const lastCandle = this.lastCandle
@@ -56,6 +56,14 @@ export class ByBitService {
     // Update or initialize the bid/ask price volume
     lastCandle[targetSide][price] = (lastCandle[targetSide][price] || 0) + volume
 
+    // Update aggressiveBid and aggressiveAsk based on tick direction
+    if (targetSide === 'bid' && direction === 'PlusTick') {
+      lastCandle.aggressiveBid = (lastCandle.aggressiveBid || 0) + volume
+    } else if (targetSide === 'ask' && direction !== 'PlusTick') {
+      // Assuming any non PlusTick is a MinusTick
+      lastCandle.aggressiveAsk = (lastCandle.aggressiveAsk || 0) + volume
+    }
+
     // Update high and low
     lastCandle.high = lastCandle.high ? Math.max(lastCandle.high, Number(price)) : Number(price)
     lastCandle.low = lastCandle.low ? Math.min(lastCandle.low, Number(price)) : Number(price)
@@ -71,6 +79,8 @@ export class ByBitService {
       symbol: 'BTCUSDT',
       exchange: Exchange.BINANCE,
       interval: '1m',
+      aggressiveBid: 0,
+      aggressiveAsk: 0,
       delta: 0,
       volume: 0,
       high: null,

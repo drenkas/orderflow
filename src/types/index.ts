@@ -4,6 +4,8 @@ export interface IFootPrintCandle {
   interval: string
   symbol: string
   exchange: string
+  aggressiveBid: number
+  aggressiveAsk: number
   delta: number
   volume: number
   high: number
