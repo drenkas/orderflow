@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common'
+import { Injectable, Logger } from '@nestjs/common'
 import { Cron } from '@nestjs/schedule'
 import { DatabaseService } from '@database/database.service'
 import { numberInString, WsMessageAggTradeRaw } from 'binance'
@@ -8,12 +8,16 @@ import { IFootPrintCandle } from 'src/types'
 
 @Injectable()
 export class BinanceService {
+  private logger: Logger
   private activeCandles: IFootPrintCandle[] = []
   private closedCandles: IFootPrintCandle[] = []
-  constructor(private readonly databaseService: DatabaseService, private readonly binanceWsService: BinanceWebSocketService) {}
+  constructor(private readonly databaseService: DatabaseService, private readonly binanceWsService: BinanceWebSocketService) {
+    this.logger = new Logger(BinanceService.name)
+  }
 
   async onModuleInit() {
     this.binanceWsService.subscribeToTrades('BTCUSDT', 'usdm')
+    this.logger.log('subscribing to WS')
 
     this.createNewCandle()
 
@@ -34,6 +38,9 @@ export class BinanceService {
   }
 
   private updateLastCandle(isBuyerMM: boolean, positionSize: numberInString, price: numberInString) {
+    if (!this.lastCandle) return
+    this.logger.log('updating candle')
+
     const lastCandle = this.lastCandle
 
     const volume = Number(positionSize)
@@ -67,6 +74,17 @@ export class BinanceService {
     const now = new Date()
     now.setSeconds(0, 0)
 
+    const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+
+    const date = now.getDate()
+    const month = months[now.getMonth()]
+    const year = now.getFullYear()
+    const hours = now.getHours().toString().padStart(2, '0')
+    const minutes = now.getMinutes().toString().padStart(2, '0')
+    const seconds = now.getSeconds().toString().padStart(2, '0')
+
+    this.logger.log(`Creating new candle at ${date} ${month} ${year} ${hours}:${minutes}:${seconds}.`)
+
     this.activeCandles.push({
       id: crypto.randomUUID(),
       timestamp: now.toISOString(),
@@ -86,6 +104,7 @@ export class BinanceService {
 
   private closeLastCandle() {
     if (this.activeCandles.length > 0) {
+      this.logger.log('closing candle')
       const candleToClose = this.activeCandles.pop()
       this.closedCandles.push(candleToClose)
     }
@@ -95,6 +114,7 @@ export class BinanceService {
     const successfulIds: string[] = []
 
     for (let i = 0; i < this.closedCandles.length; i++) {
+      this.logger.log('Saving Candle', this.closedCandles[i].id, this.closedCandles[i].timestamp)
       const isSaved = await this.databaseService.saveFootPrintCandle(this.closedCandles[i])
       if (isSaved) {
         successfulIds.push(this.closedCandles[i].id)
