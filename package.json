@@ -7,10 +7,13 @@
   "license": "UNLICENSED",
   "scripts": {
     "build": "nest build",
+    "build:orderflow-service": "nest build orderflow-service --webpack",
+    "build:orderflow-api": "nest build orderflow-api --webpack",
     "format": "prettier --write \"apps/**/*.ts\" \"libs/**/*.ts\"",
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:orderflow-service": "nest start orderflow-service --watch",
+    "start:orderflow-api": "nest start orderflow-api --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/apps/orderflow/main",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
