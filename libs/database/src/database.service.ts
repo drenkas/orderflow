@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm'
 import { Repository } from 'typeorm'
 import { IFootPrintCandle } from 'apps/orderflow-service/src/types'
 import { FootPrintCandle } from '@database/entity/footprint_candle.entity'
+import { Exchange } from '@orderflow-service/constants/exchanges'
 
 @Injectable()
 export class DatabaseService {
@@ -23,8 +24,8 @@ export class DatabaseService {
     }
   }
 
-  async getCandles(interval: '30m' | '1h' | '4h'): Promise<any[]> {
-    const intervalMinutes = this.getIntervalInMinutes(interval)
+  async getCandles(exchange: Exchange, symbol: string, interval: string): Promise<any[]> {
+    const intervalMinutes = this.getIntervalInMinutes(interval as any)
     const groupingColumn = `DATE_TRUNC('minute', timestamp) - INTERVAL '1 minute' * (EXTRACT(MINUTE FROM timestamp) % ${intervalMinutes})`
 
     const query = this.footprintCandleRepository
@@ -45,11 +46,6 @@ export class DatabaseService {
       .addGroupBy('candle.symbol')
       .addGroupBy('candle.exchange')
       .orderBy('timestamp', 'ASC')
-
-    // NOTE: The aggregation for the bid and ask columns will require more
-    // complex logic, perhaps involving subqueries or even raw SQL,
-    // depending on the specifics of their data structures.
-
     try {
       return await query.getRawMany()
     } catch (error) {
