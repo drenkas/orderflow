@@ -6,7 +6,7 @@ import { BybitWebSocketService } from 'src/bybit/BybitWebsocketService'
 import { TradeData } from 'src/bybit/websocket.responses'
 import { Exchange } from 'src/constants/exchanges'
 import { IFootPrintCandle } from 'src/types'
-import { createFormattedDate } from 'src/utils/dateTime'
+import { createFormattedDate, getStartOfMinute } from 'src/utils/dateTime'
 
 @Injectable()
 export class ByBitService {
@@ -76,12 +76,10 @@ export class ByBitService {
   }
 
   private createNewCandle() {
-    const now = new Date()
-    now.setSeconds(0, 0)
+    const now = getStartOfMinute()
+    const formattedDate = createFormattedDate(now)
 
-    const date = createFormattedDate(now)
-
-    this.logger.log(`Creating new candle at ${date}.`)
+    this.logger.log(`Creating new candle at ${formattedDate}.`)
 
     this.activeCandles.push({
       id: crypto.randomUUID(),

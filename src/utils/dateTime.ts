@@ -10,3 +10,9 @@ export const createFormattedDate = (date: Date): string => {
 
   return `${dayOfMonth} ${month} ${year} ${hours}:${minutes}:${seconds}`
 }
+
+export const getStartOfMinute = (): Date => {
+  const now = new Date()
+  now.setSeconds(0, 0)
+  return now
+}

@@ -6,7 +6,7 @@ import * as crypto from 'crypto'
 import { BinanceWebSocketService } from 'src/binance/BinanceWebsocketService'
 import { Exchange } from 'src/constants/exchanges'
 import { IFootPrintCandle } from 'src/types'
-import { createFormattedDate } from 'src/utils/dateTime'
+import { createFormattedDate, getStartOfMinute } from 'src/utils/dateTime'
 
 @Injectable()
 export class BinanceService {
@@ -72,12 +72,10 @@ export class BinanceService {
   }
 
   private createNewCandle() {
-    const now = new Date()
-    now.setSeconds(0, 0)
+    const now = getStartOfMinute()
+    const formattedDate = createFormattedDate(now)
 
-    const date = createFormattedDate(now)
-
-    this.logger.log(`Creating new candle at ${date}.`)
+    this.logger.log(`Creating new candle at ${formattedDate}.`)
 
     this.activeCandles.push({
       id: crypto.randomUUID(),
