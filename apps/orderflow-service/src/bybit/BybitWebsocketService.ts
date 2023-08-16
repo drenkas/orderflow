@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common'
 import { Observable, Subject } from 'rxjs'
-import { TradeData, TradeResponse } from 'src/bybit/websocket.responses'
+import { TradeData, TradeResponse } from 'apps/orderflow-service/src/bybit/websocket.responses'
 import { CategoryV5, WebsocketClient } from 'bybit-api'
 
 @Injectable()

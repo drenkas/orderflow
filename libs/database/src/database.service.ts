@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
 import { Repository } from 'typeorm'
-import { IFootPrintCandle } from 'src/types'
+import { IFootPrintCandle } from 'apps/orderflow-service/src/types'
 import { FootPrintCandle } from '@database/entity/footprint_candle.entity'
 
 @Injectable()

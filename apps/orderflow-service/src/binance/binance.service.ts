@@ -1,33 +1,30 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { Cron, CronExpression } from '@nestjs/schedule'
 import { DatabaseService } from '@database/database.service'
+import { numberInString, WsMessageAggTradeRaw } from 'binance'
 import * as crypto from 'crypto'
-import { BybitWebSocketService } from 'src/bybit/BybitWebsocketService'
-import { TradeData } from 'src/bybit/websocket.responses'
-import { Exchange } from 'src/constants/exchanges'
-import { IFootPrintCandle } from 'src/types'
-import { createFormattedDate, getStartOfMinute } from 'src/utils/dateTime'
+import { BinanceWebSocketService } from 'apps/orderflow-service/src/binance/BinanceWebsocketService'
+import { Exchange } from 'apps/orderflow-service/src/constants/exchanges'
+import { IFootPrintCandle } from 'apps/orderflow-service/src/types'
+import { createFormattedDate, getStartOfMinute } from 'apps/orderflow-service/src/utils/dateTime'
 
 @Injectable()
-export class ByBitService {
+export class BinanceService {
   private logger: Logger
   private activeCandles: IFootPrintCandle[] = []
   private closedCandles: IFootPrintCandle[] = []
-  constructor(private readonly databaseService: DatabaseService, private readonly bybitWsService: BybitWebSocketService) {
-    this.logger = new Logger(ByBitService.name)
+  constructor(private readonly databaseService: DatabaseService, private readonly binanceWsService: BinanceWebSocketService) {
+    this.logger = new Logger(BinanceService.name)
   }
 
   async onModuleInit() {
-    const topics: string[] = ['publicTrade.BTCUSDT']
-    this.bybitWsService.subscribeToTopics(topics, 'linear')
+    this.binanceWsService.subscribeToTrades('BTCUSDT', 'usdm')
     this.logger.log('subscribing to WS')
 
     this.createNewCandle()
 
-    this.bybitWsService.tradeUpdates.subscribe((trades: TradeData[]) => {
-      for (let i = 0; i < trades.length; i++) {
-        this.updateLastCandle(trades[i].S, trades[i].v, trades[i].p, trades[i].L)
-      }
+    this.binanceWsService.tradeUpdates.subscribe((trade: WsMessageAggTradeRaw) => {
+      this.updateLastCandle(trade.m, trade.q, trade.p)
     })
   }
 
@@ -42,19 +39,19 @@ export class ByBitService {
     return this.activeCandles[this.activeCandles.length - 1]
   }
 
-  private updateLastCandle(side: string, positionSize: string, price: string, direction: string) {
+  private updateLastCandle(isBuyerMM: boolean, positionSize: numberInString, price: numberInString) {
     if (!this.lastCandle) return
 
     const lastCandle = this.lastCandle
 
-    const volume = parseFloat(positionSize)
+    const volume = Number(positionSize)
 
     // Update volume
     lastCandle.volume += volume
 
-    // Determine which side (bid/ask) and delta direction based on the side
-    const targetSide = side === 'Buy' ? 'bid' : 'ask'
-    const deltaChange = side === 'Buy' ? volume : -volume
+    // Determine which side (bid/ask) and delta direction based on isBuyerMM
+    const targetSide = isBuyerMM ? 'ask' : 'bid'
+    const deltaChange = isBuyerMM ? -volume : volume
 
     // Update delta
     lastCandle.delta += deltaChange
@@ -62,12 +59,11 @@ export class ByBitService {
     // Update or initialize the bid/ask price volume
     lastCandle[targetSide][price] = (lastCandle[targetSide][price] || 0) + volume
 
-    // Update aggressiveBid and aggressiveAsk based on tick direction
-    if (targetSide === 'bid' && direction === 'PlusTick') {
-      lastCandle.aggressiveBid = (lastCandle.aggressiveBid || 0) + volume
-    } else if (targetSide === 'ask' && direction !== 'PlusTick') {
-      // Assuming any non PlusTick is a MinusTick
-      lastCandle.aggressiveAsk = (lastCandle.aggressiveAsk || 0) + volume
+    // Update aggressiveBid and aggressiveAsk based on isBuyerMM
+    if (isBuyerMM) {
+      lastCandle.aggressiveAsk += volume
+    } else {
+      lastCandle.aggressiveBid += volume
     }
 
     // Update high and low
