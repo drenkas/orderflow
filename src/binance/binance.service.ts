@@ -1,10 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common'
-import { Cron } from '@nestjs/schedule'
+import { Cron, CronExpression } from '@nestjs/schedule'
 import { DatabaseService } from '@database/database.service'
 import { numberInString, WsMessageAggTradeRaw } from 'binance'
+import * as crypto from 'crypto'
 import { BinanceWebSocketService } from 'src/binance/BinanceWebsocketService'
 import { Exchange } from 'src/constants/exchanges'
 import { IFootPrintCandle } from 'src/types'
+import { createFormattedDate } from 'src/utils/dateTime'
 
 @Injectable()
 export class BinanceService {
@@ -26,7 +28,7 @@ export class BinanceService {
     })
   }
 
-  @Cron('* * * * *') // Every 1 minute
+  @Cron(CronExpression.EVERY_MINUTE)
   async processCandles() {
     this.closeLastCandle()
     this.createNewCandle()
@@ -39,7 +41,6 @@ export class BinanceService {
 
   private updateLastCandle(isBuyerMM: boolean, positionSize: numberInString, price: numberInString) {
     if (!this.lastCandle) return
-    this.logger.log('updating candle')
 
     const lastCandle = this.lastCandle
 
@@ -74,16 +75,9 @@ export class BinanceService {
     const now = new Date()
     now.setSeconds(0, 0)
 
-    const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+    const date = createFormattedDate(now)
 
-    const date = now.getDate()
-    const month = months[now.getMonth()]
-    const year = now.getFullYear()
-    const hours = now.getHours().toString().padStart(2, '0')
-    const minutes = now.getMinutes().toString().padStart(2, '0')
-    const seconds = now.getSeconds().toString().padStart(2, '0')
-
-    this.logger.log(`Creating new candle at ${date} ${month} ${year} ${hours}:${minutes}:${seconds}.`)
+    this.logger.log(`Creating new candle at ${date}.`)
 
     this.activeCandles.push({
       id: crypto.randomUUID(),
