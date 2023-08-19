@@ -37,12 +37,11 @@ export class DatabaseService {
         `MIN(candle.low) as low`,
         `SUM(candle.delta) as delta`,
         `SUM(candle.volume) as volume`,
-        `candle.symbol`,
-        `candle.exchange`,
-        `SUM(candle.aggressiveBid) as aggressiveBid`,
-        `SUM(candle.aggressiveAsk) as aggressiveAsk`
+        `candle.symbol as symbol`,
+        `candle.exchange as exchange`,
+        `SUM(candle.aggressiveBid) as "aggressiveBid"`,
+        `SUM(candle.aggressiveAsk) as "aggressiveAsk"`
         // TODO: Aggregate bid and ask columns
-
       ])
       .where('candle.exchange = :exchange', { exchange })
       .andWhere('candle.symbol = :symbol', { symbol })
