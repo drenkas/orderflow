@@ -4,6 +4,7 @@ import { Repository } from 'typeorm'
 import { IFootPrintCandle } from 'apps/orderflow-service/src/types'
 import { FootPrintCandle } from '@database/entity/footprint_candle.entity'
 import { Exchange } from '@orderflow-service/constants/exchanges'
+import { intervalMap } from '@orderflow-api/constants.ts'
 
 @Injectable()
 export class DatabaseService {
@@ -25,7 +26,7 @@ export class DatabaseService {
   }
 
   async getCandles(exchange: Exchange, symbol: string, interval: string): Promise<any[]> {
-    const intervalMinutes = this.getIntervalInMinutes(interval as any)
+    const intervalMinutes = intervalMap[interval]
     const groupingColumn = `DATE_TRUNC('minute', timestamp) - INTERVAL '1 minute' * (EXTRACT(MINUTE FROM timestamp) % ${intervalMinutes})`
 
     const query = this.footprintCandleRepository
@@ -44,6 +45,7 @@ export class DatabaseService {
 
       ])
       .where('candle.exchange = :exchange', { exchange })
+      .andWhere('candle.symbol = :symbol', { symbol })
       .groupBy(groupingColumn)
       .addGroupBy('candle.symbol')
       .addGroupBy('candle.exchange')
@@ -53,19 +55,6 @@ export class DatabaseService {
     } catch (error) {
       console.error('Error fetching aggregated candles:', error)
       throw error
-    }
-  }
-
-  private getIntervalInMinutes(interval: '30m' | '1h' | '4h'): number {
-    switch (interval) {
-      case '30m':
-        return 30
-      case '1h':
-        return 60
-      case '4h':
-        return 240
-      default:
-        throw new Error(`Invalid interval: ${interval}`)
     }
   }
 }

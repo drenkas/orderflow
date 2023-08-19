@@ -1,6 +1,7 @@
 /* eslint-disable indent */
 import { Exchange } from '@orderflow-service/constants/exchanges'
-import { IsString } from 'class-validator'
+import { INTERVALS } from '@orderflow-api/constants.ts'
+import { IsString, IsEnum } from 'class-validator'
 
 export class CandleBySymbolAndIntervalDto {
   @IsString()
@@ -9,6 +10,6 @@ export class CandleBySymbolAndIntervalDto {
   @IsString()
   symbol: string
 
-  @IsString()
-  interval: string
+  @IsEnum(INTERVALS)
+  interval: INTERVALS
 }
