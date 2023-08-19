@@ -41,7 +41,9 @@ export class DatabaseService {
         `SUM(candle.aggressiveBid) as aggressiveBid`,
         `SUM(candle.aggressiveAsk) as aggressiveAsk`
         // TODO: Aggregate bid and ask columns
+
       ])
+      .where('candle.exchange = :exchange', { exchange })
       .groupBy(groupingColumn)
       .addGroupBy('candle.symbol')
       .addGroupBy('candle.exchange')

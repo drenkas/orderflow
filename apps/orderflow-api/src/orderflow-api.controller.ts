@@ -6,7 +6,7 @@ import { CandleBySymbolAndIntervalDto } from '@orderflow-api/orderflow-api.dto'
 export class ApiController {
   constructor(private readonly databaseService: DatabaseService) {}
 
-  @Get(':exchange/:symbol/:type')
+  @Get(':exchange/:symbol/:interval')
   async getCandlesBySymbol(@Param(new ValidationPipe()) params: CandleBySymbolAndIntervalDto): Promise<any> {
     return await this.databaseService.getCandles(params.exchange, params.symbol, params.interval)
   }
