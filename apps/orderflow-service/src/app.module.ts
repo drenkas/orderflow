@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common'
 import { ConfigModule } from '@nestjs/config'
 import { ScheduleModule } from '@nestjs/schedule'
 import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm'
+import { AppService } from './app.service'
 import { DatabaseModule } from '@database'
 import ormconfig from '@database/ormconfig'
 import { BinanceService } from 'apps/orderflow-service/src/binance/binance.service'
@@ -11,6 +12,6 @@ import { BybitWebSocketService } from 'apps/orderflow-service/src/bybit/BybitWeb
 
 @Module({
   imports: [ConfigModule.forRoot({}), ScheduleModule.forRoot(), TypeOrmModule.forRoot(ormconfig as TypeOrmModuleOptions), DatabaseModule],
-  providers: [ByBitService, BybitWebSocketService, BinanceService, BinanceWebSocketService]
+  providers: [AppService, ByBitService, BybitWebSocketService, BinanceService, BinanceWebSocketService]
 })
 export class AppModule {}

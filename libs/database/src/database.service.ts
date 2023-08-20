@@ -56,4 +56,19 @@ export class DatabaseService {
       throw error
     }
   }
+  async pruneOldData(): Promise<void> {
+    try {
+      const TEN_DAYS_AGO = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000) // 10 days ago
+
+      await this.footprintCandleRepository.query(
+        `
+        DELETE FROM footprint_candle
+        WHERE timestamp < $1
+      `,
+        [TEN_DAYS_AGO]
+      )
+    } catch (err) {
+      console.error('Failed to prune old data:', err)
+    }
+  }
 }
