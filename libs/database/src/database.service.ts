@@ -1,9 +1,8 @@
 import { Injectable } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
 import { Repository } from 'typeorm'
-import { IFootPrintCandle } from 'apps/orderflow-service/src/types'
+import { IFootPrintCandle } from '@orderflow/dto/orderflow.dto'
 import { FootPrintCandle } from '@database/entity/footprint_candle.entity'
-import { Exchange } from '@orderflow-service/constants/exchanges'
 import { intervalMap } from '@orderflow-api/constants.ts'
 
 @Injectable()
@@ -25,7 +24,7 @@ export class DatabaseService {
     }
   }
 
-  async getCandles(exchange: Exchange, symbol: string, interval: string): Promise<any[]> {
+  async getCandles(exchange: string, symbol: string, interval: string): Promise<any[]> {
     const intervalMinutes = intervalMap[interval]
     const groupingColumn = `DATE_TRUNC('minute', timestamp) - INTERVAL '1 minute' * (EXTRACT(MINUTE FROM timestamp) % ${intervalMinutes})`
 

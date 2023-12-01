@@ -1,21 +1,5 @@
 version: '3.8'
 services:
-  orderflow-service:
-    restart: always
-    build:
-      context: .
-      dockerfile: ./apps/orderflow-service/Dockerfile
-    environment:
-      - DB_HOST=host.docker.internal
-      - DB_PORT=5433
-      - DB_USERNAME=postgres
-      - DB_PASSWORD=password
-      - DB_NAME=postgres
-    extra_hosts:
-      - 'host.docker.internal:host-gateway'
-    entrypoint: ['node', 'dist/main.js']
-    ports:
-      - 5000:3000
   orderflow-api:
     restart: always
     build:
@@ -31,4 +15,36 @@ services:
       - 'host.docker.internal:host-gateway'
     entrypoint: ['node', 'dist/main.js']
     ports:
+      - 5000:3000
+  orderflow-binance:
+    restart: always
+    build:
+      context: .
+      dockerfile: ./apps/binance/Dockerfile
+    environment:
+      - DB_HOST=host.docker.internal
+      - DB_PORT=5433
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=password
+      - DB_NAME=postgres
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    entrypoint: ['node', 'dist/main.js']
+    ports:
       - 5001:3000
+  orderflow-bybit:
+    restart: always
+    build:
+      context: .
+      dockerfile: ./apps/binance/Dockerfile
+    environment:
+      - DB_HOST=host.docker.internal
+      - DB_PORT=5433
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=password
+      - DB_NAME=postgres
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    entrypoint: ['node', 'dist/main.js']
+    ports:
+      - 5002:3000

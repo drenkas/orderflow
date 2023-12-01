@@ -5,13 +5,11 @@ import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm'
 import { AppService } from './app.service'
 import { DatabaseModule } from '@database'
 import ormconfig from '@database/ormconfig'
-import { BinanceService } from 'apps/orderflow-service/src/binance/binance.service'
-import { BinanceWebSocketService } from 'apps/orderflow-service/src/binance/BinanceWebsocketService'
-import { ByBitService } from 'apps/orderflow-service/src/bybit/bybit.service'
-import { BybitWebSocketService } from 'apps/orderflow-service/src/bybit/BybitWebsocketService'
+import { BinanceService } from 'apps/binance/src/binance.service'
+import { BinanceWebSocketService } from 'apps/binance/src/BinanceWebsocketService'
 
 @Module({
   imports: [ConfigModule.forRoot({}), ScheduleModule.forRoot(), TypeOrmModule.forRoot(ormconfig as TypeOrmModuleOptions), DatabaseModule],
-  providers: [AppService, ByBitService, BybitWebSocketService, BinanceService, BinanceWebSocketService]
+  providers: [AppService, BinanceService, BinanceWebSocketService]
 })
-export class AppModule {}
+export class BinanceModule {}
