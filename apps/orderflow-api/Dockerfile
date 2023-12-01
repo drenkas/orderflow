@@ -22,6 +22,6 @@ COPY apps/orderflow-api/ .
 # Build the application
 RUN yarn build:orderflow-api
 
-EXPOSE 3001
+EXPOSE 3000
 
 CMD [ "node", "dist/main.js" ]
