@@ -6,9 +6,14 @@ import { WebsocketClient, WsMessageAggTradeRaw } from 'binance'
 export class BinanceWebSocketService {
   private ws: WebsocketClient
   private tradeUpdates$: Subject<WsMessageAggTradeRaw> = new Subject()
+  private connected$: Subject<string> = new Subject()
   TradeData
   constructor() {
     this.initWebSocket()
+  }
+
+  get connected(): Observable<string> {
+    return this.connected$.asObservable()
   }
 
   get tradeUpdates(): Observable<WsMessageAggTradeRaw> {
@@ -22,8 +27,9 @@ export class BinanceWebSocketService {
       this.tradeUpdates$.next(message)
     })
 
-    this.ws.on('open', (data) => {
-      console.log('connection opened:', data.wsKey, data.ws.target.url)
+    this.ws.on('open', (event) => {
+      console.log('connection opened:', event.wsKey, event.ws.target.url)
+      this.connected$.next(event.wsKey)
     })
 
     this.ws.on('reconnecting', (data) => {
@@ -39,7 +45,8 @@ export class BinanceWebSocketService {
     })
   }
 
-  public subscribeToTrades(symbol: string, market: 'spot' | 'usdm' | 'coinm'): void {
-    this.ws.subscribeAggregateTrades(symbol, market)
+  public subscribeToTrades(symbol: string, market: 'spot' | 'usdm' | 'coinm'): any {
+    const response = this.ws.subscribeAggregateTrades(symbol, market)
+    return response
   }
 }

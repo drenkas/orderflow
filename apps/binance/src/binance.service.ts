@@ -9,18 +9,49 @@ import { createFormattedDate, getStartOfMinute } from '@orderflow/utils/date'
 
 @Injectable()
 export class BinanceService {
-  private logger: Logger
+  private logger: Logger = new Logger(BinanceService.name)
+  private symbols: string[] = ['BTCUSDT']
+
+  private expectedConnections: Map<string, Date> = new Map()
+  private openConnections: Map<string, Date> = new Map()
+  private wsKeyContextStore: Record<string, { symbol: string }> = {}
+  private didFinishConnectingWS: boolean = false
+
   private activeCandles: IFootPrintCandle[] = []
   private closedCandles: IFootPrintCandle[] = []
-  constructor(private readonly databaseService: DatabaseService, private readonly binanceWsService: BinanceWebSocketService) {
-    this.logger = new Logger(BinanceService.name)
-  }
+
+  constructor(private readonly databaseService: DatabaseService, private readonly binanceWsService: BinanceWebSocketService) {}
 
   async onModuleInit() {
-    this.binanceWsService.subscribeToTrades('BTCUSDT', 'usdm')
-    this.logger.log('subscribing to WS')
+    await this.subscribeToWS()
+  }
 
-    this.createNewCandle()
+  private async subscribeToWS(): Promise<void> {
+    for (let i = 0; i < this.symbols.length; i++) {
+      const response = this.binanceWsService.subscribeToTrades(this.symbols[i], 'usdm')
+
+      const wsKey = response.wsKey
+
+      if (wsKey) {
+        this.wsKeyContextStore[wsKey] = { symbol: this.symbols[i] }
+        this.expectedConnections.set(wsKey, new Date())
+      } else {
+        this.logger.error('no wskey? ' + { symbol: this.symbols[i], wsKey })
+      }
+    }
+
+    this.binanceWsService.connected.subscribe((wsKey) => {
+      this.openConnections.set(wsKey, new Date())
+
+      const totalExpected = this.expectedConnections.size
+      const totalConnected = this.openConnections.size
+      this.logger.log(`Total ${totalConnected}/${totalExpected} ws connections open | (${wsKey} connected)`)
+
+      if (totalConnected === totalExpected) {
+        this.logger.log(`All WS connections are now open`)
+        this.didFinishConnectingWS = true
+      }
+    })
 
     this.binanceWsService.tradeUpdates.subscribe((trade: WsMessageAggTradeRaw) => {
       this.updateLastCandle(trade.m, trade.q, trade.p)
@@ -29,9 +60,11 @@ export class BinanceService {
 
   @Cron(CronExpression.EVERY_MINUTE)
   async processCandles() {
-    this.closeLastCandle()
-    this.createNewCandle()
-    await this.persistCandlesToStorage()
+    if (this.didFinishConnectingWS) {
+      this.closeLastCandle()
+      this.createNewCandle()
+      await this.persistCandlesToStorage()
+    }
   }
 
   get lastCandle(): IFootPrintCandle {
@@ -39,7 +72,7 @@ export class BinanceService {
   }
 
   private updateLastCandle(isBuyerMM: boolean, positionSize: numberInString, price: numberInString) {
-    if (!this.lastCandle) return
+    if (!this.didFinishConnectingWS || !this.lastCandle) return
 
     const lastCandle = this.lastCandle
 
