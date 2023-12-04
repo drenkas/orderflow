@@ -13,8 +13,8 @@ export interface IFootPrintCandle {
   volume: number
   high: number
   low: number
-  bid: IOrderRow
-  ask: IOrderRow
+  // bid: IOrderRow
+  // ask: IOrderRow
   /** bid/ask volume grouped by levels (to pricePrecisionDp) */
   priceLevels: { [price: number]: IPriceLevel }
   isClosed: boolean
@@ -26,9 +26,9 @@ export type IFootPrintClosedCandle = IFootPrintCandle & {
   didPersistToStore: boolean
 }
 
-interface IOrderRow {
-  [price: string]: number
-}
+// interface IOrderRow {
+//   [price: string]: number
+// }
 
 export interface IPriceLevel {
   volSumBid: number

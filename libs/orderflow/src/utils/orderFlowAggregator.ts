@@ -112,8 +112,6 @@ export class OrderFlowAggregator {
       volumeDelta: 0,
       high: null,
       low: null,
-      bid: {},
-      ask: {},
       priceLevels: {},
       isClosed: false
     }
@@ -140,20 +138,27 @@ export class OrderFlowAggregator {
     this.activeCandle.volume += volume
 
     // Determine which side (bid/ask) and delta direction based on isBuyerMM
-    const targetSide = isBuyerMaker ? 'ask' : 'bid'
     const deltaChange = isBuyerMaker ? -volume : volume
 
     // Update delta
     this.activeCandle.volumeDelta += deltaChange
 
-    // Update or initialize the bid/ask price volume
-    this.activeCandle[targetSide][price] = (this.activeCandle[targetSide][price] || 0) + volume
+    // Initialise the price level, if it doesn't exist yet
+    // TODO: do price step size rounding here
+    if (!this.activeCandle.priceLevels[price]) {
+      this.activeCandle.priceLevels[price] = {
+        volSumAsk: 0,
+        volSumBid: 0
+      }
+    }
 
     // Update aggressiveBid and aggressiveAsk based on isBuyerM
     if (isBuyerMaker) {
       this.activeCandle.aggressiveAsk += volume
+      this.activeCandle.priceLevels[price].volSumAsk += volume
     } else {
       this.activeCandle.aggressiveBid += volume
+      this.activeCandle.priceLevels[price].volSumBid += volume
     }
 
     // Update high and low
