@@ -22,7 +22,7 @@ export class OrderFlowAggregator {
   /** Candle currently building (still open) */
   private activeCandle: IFootPrintCandle | undefined
 
-  /** Queue of candles that may not yet have received the DB (closed) */
+  /** Queue of candles that may not yet have reached the DB yet (closed candles) */
   private candleQueue: IFootPrintClosedCandle[] = []
 
   constructor(exchange: string, symbol: string, interval: string, intervalSizeMs: number, config?: Partial<OrderFlowAggregatorConfig>) {
