@@ -2,23 +2,22 @@ import { Injectable, Logger } from '@nestjs/common'
 import { Cron, CronExpression } from '@nestjs/schedule'
 import { DatabaseService } from '@database/database.service'
 import { numberInString, WsMessageAggTradeRaw } from 'binance'
-import * as crypto from 'crypto'
 import { BinanceWebSocketService } from 'apps/binance/src/BinanceWebsocketService'
-import { IFootPrintCandle } from '@orderflow/dto/orderflow.dto'
-import { createFormattedDate, getStartOfMinute } from '@orderflow/utils/date'
+import { getMsForInterval } from '@orderflow/utils/date'
+import { OrderFlowAggregator } from '@orderflow/utils/orderFlowAggregator'
 
 @Injectable()
 export class BinanceService {
   private logger: Logger = new Logger(BinanceService.name)
   private symbols: string[] = ['BTCUSDT']
+  private BASE_INTERVAL = '1m'
 
   private expectedConnections: Map<string, Date> = new Map()
   private openConnections: Map<string, Date> = new Map()
   private wsKeyContextStore: Record<string, { symbol: string }> = {}
   private didFinishConnectingWS: boolean = false
 
-  private activeCandle: IFootPrintCandle
-  private candleQueue: IFootPrintCandle[] = []
+  private aggregators: { [symbol: string]: OrderFlowAggregator } = {}
 
   constructor(private readonly databaseService: DatabaseService, private readonly binanceWsService: BinanceWebSocketService) {}
 
@@ -54,16 +53,31 @@ export class BinanceService {
     })
 
     this.binanceWsService.tradeUpdates.subscribe((trade: WsMessageAggTradeRaw) => {
-      this.processNewTrades(trade.m, trade.q, trade.p)
+      this.processNewTrades(trade.s, trade.m, trade.q, trade.p)
     })
   }
 
+  private getOrderFlowAggregator(symbol: string, interval: string): OrderFlowAggregator {
+    if (!this.aggregators[symbol]) {
+      const intervalSizeMs = getMsForInterval(interval)
+
+      const maxRowsInMemory = 600
+      this.aggregators[symbol] = new OrderFlowAggregator('binance', symbol, interval, intervalSizeMs, {
+        maxCacheInMemory: maxRowsInMemory
+      })
+    }
+
+    return this.aggregators[symbol]
+  }
+
   @Cron(CronExpression.EVERY_MINUTE)
-  async processCandles() {
+  async processMinuteCandleClose() {
     if (this.didFinishConnectingWS) {
-      this.retireActiveCandle()
-      this.createNewCandle()
-      await this.persistCandlesToStorage()
+      for (const symbol in this.aggregators) {
+        const aggr = this.getOrderFlowAggregator(symbol, this.BASE_INTERVAL)
+        aggr.processCandleClosed()
+        await this.persistCandlesToStorage(symbol, this.BASE_INTERVAL)
+      }
     }
   }
 
@@ -72,74 +86,32 @@ export class BinanceService {
     await this.databaseService.pruneOldData()
   }
 
-  private processNewTrades(isBuyerMM: boolean, positionSize: numberInString, price: numberInString) {
-    if (!this.didFinishConnectingWS || !this.activeCandle) return
-
-    const volume = Number(positionSize)
-
-    // Update volume
-    this.activeCandle.volume += volume
-
-    // Determine which side (bid/ask) and delta direction based on isBuyerMM
-    const targetSide = isBuyerMM ? 'ask' : 'bid'
-    const deltaChange = isBuyerMM ? -volume : volume
-
-    // Update delta
-    this.activeCandle.delta += deltaChange
-
-    // Update or initialize the bid/ask price volume
-    this.activeCandle[targetSide][price] = (this.activeCandle[targetSide][price] || 0) + volume
-
-    // Update aggressiveBid and aggressiveAsk based on isBuyerMM
-    if (isBuyerMM) {
-      this.activeCandle.aggressiveAsk += volume
-    } else {
-      this.activeCandle.aggressiveBid += volume
+  private processNewTrades(symbol: string, isBuyerMaker: boolean, positionSize: numberInString, price: numberInString) {
+    if (!this.didFinishConnectingWS) {
+      return
     }
 
-    // Update high and low
-    this.activeCandle.high = this.activeCandle.high ? Math.max(this.activeCandle.high, Number(price)) : Number(price)
-    this.activeCandle.low = this.activeCandle.low ? Math.min(this.activeCandle.low, Number(price)) : Number(price)
+    const aggr = this.getOrderFlowAggregator(symbol, this.BASE_INTERVAL)
+    aggr.processNewTrades(isBuyerMaker, Number(positionSize), Number(price))
   }
 
-  private retireActiveCandle(): void {
-    if (this.activeCandle) {
-      this.logger.log('closing candle')
-      this.candleQueue.push(this.activeCandle)
-      this.activeCandle = null
+  private async persistCandlesToStorage(symbol: string, interval: string) {
+    const aggr = this.getOrderFlowAggregator(symbol, interval)
+
+    const queuedCandles = aggr.getQueuedCandles()
+    if (queuedCandles.length === 0) {
+      return
     }
-  }
 
-  private createNewCandle() {
-    const now = getStartOfMinute()
-    const formattedDate = createFormattedDate(now)
+    this.logger.log(
+      'Saving batch of candles',
+      queuedCandles.map((c) => c.uuid)
+    )
 
-    this.logger.log(`Creating new candle at ${formattedDate}.`)
-
-    this.activeCandle = {
-      uuid: crypto.randomUUID(),
-      openTime: now.toISOString(),
-      symbol: 'BTCUSDT',
-      exchange: 'binance',
-      interval: '1m',
-      aggressiveBid: 0,
-      aggressiveAsk: 0,
-      delta: 0,
-      volume: 0,
-      high: null,
-      low: null,
-      bid: {},
-      ask: {}
-    } as IFootPrintCandle
-  }
-
-  private async persistCandlesToStorage() {
-    if (this.candleQueue.length === 0) return
-
-    this.logger.log('Saving batch of candles', this.candleQueue.map(c => c.uuid))
-    const savedUUIDs = await this.databaseService.batchSaveFootPrintCandles(this.candleQueue)
+    const savedUUIDs = await this.databaseService.batchSaveFootPrintCandles(queuedCandles)
 
     // Filter out successfully saved candles
-    this.candleQueue = this.candleQueue.filter(candle => !savedUUIDs.includes(candle.uuid))
+    aggr.markSavedCandles(savedUUIDs)
+    aggr.pruneCandleQueue()
   }
 }

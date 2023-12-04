@@ -16,3 +16,15 @@ export const getStartOfMinute = (): Date => {
   now.setSeconds(0, 0)
   return now
 }
+
+const INTERVAL_MS_MAP = {
+  '1m': 1000 * 60
+}
+
+export function getMsForInterval(interval: string): number {
+  const ms = INTERVAL_MS_MAP[interval]
+  if (!ms) {
+    throw new Error(`Unknown ms per interval "${interval}"`)
+  }
+  return ms
+}

@@ -56,7 +56,7 @@ export class ByBitService {
     const deltaChange = side === 'Buy' ? volume : -volume
 
     // Update delta
-    lastCandle.delta += deltaChange
+    lastCandle.volumeDelta += deltaChange
 
     // Update or initialize the bid/ask price volume
     lastCandle[targetSide][price] = (lastCandle[targetSide][price] || 0) + volume
@@ -88,7 +88,7 @@ export class ByBitService {
       interval: '1m',
       aggressiveBid: 0,
       aggressiveAsk: 0,
-      delta: 0,
+      volumeDelta: 0,
       volume: 0,
       high: null,
       low: null,
