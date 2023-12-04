@@ -37,13 +37,13 @@
         "tsConfigPath": "apps/bybit/tsconfig.app.json"
       }
     },
-    "orderflow-api": {
+    "api": {
       "type": "application",
-      "root": "apps/orderflow-api",
+      "root": "apps/api",
       "entryFile": "main",
-      "sourceRoot": "apps/orderflow-api/src",
+      "sourceRoot": "apps/api/src",
       "compilerOptions": {
-        "tsConfigPath": "apps/orderflow-api/tsconfig.app.json"
+        "tsConfigPath": "apps/api/tsconfig.app.json"
       }
     },
     "orderflow": {

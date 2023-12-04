@@ -1,5 +1,5 @@
 /* eslint-disable indent */
-import { INTERVALS } from '@orderflow-api/constants.ts'
+import { INTERVALS } from './constants.ts'
 import { IsString, IsEnum } from 'class-validator'
 
 export class CandleBySymbolAndIntervalDto {

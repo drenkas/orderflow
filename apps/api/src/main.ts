@@ -1,5 +1,5 @@
 import { NestFactory } from '@nestjs/core'
-import { OrderflowApiModule } from './orderflow-api.module'
+import { OrderflowApiModule } from './api.module'
 
 async function bootstrap() {
   setupExceptionCatchers()

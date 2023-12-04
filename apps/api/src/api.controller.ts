@@ -1,6 +1,6 @@
 import { DatabaseService } from '@database'
 import { Controller, Get, Param, ValidationPipe } from '@nestjs/common'
-import { CandleBySymbolAndIntervalDto } from '@orderflow-api/orderflow-api.dto'
+import { CandleBySymbolAndIntervalDto } from './api.dto'
 
 @Controller('candles')
 export class ApiController {

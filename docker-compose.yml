@@ -1,10 +1,10 @@
 version: '3.8'
 services:
-  orderflow-api:
+  api:
     restart: always
     build:
       context: .
-      dockerfile: ./apps/orderflow-api/Dockerfile
+      dockerfile: ./apps/api/Dockerfile
     environment:
       - DB_HOST=host.docker.internal
       - DB_PORT=5433

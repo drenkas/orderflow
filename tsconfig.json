@@ -18,11 +18,11 @@
     "forceConsistentCasingInFileNames": false,
     "noFallthroughCasesInSwitch": false,
     "paths": {
-      "@orderflow-api": [
-        "apps/orderflow-api/src"
+      "@api": [
+        "apps/api/src"
       ],
-      "@orderflow-api/*": [
-        "apps/orderflow-api/src/*"
+      "@api/*": [
+        "apps/api/src/*"
       ],
       "@database": [
         "libs/database/src"

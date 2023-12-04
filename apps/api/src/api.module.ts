@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common'
 import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm'
-import { ApiController } from '@orderflow-api/orderflow-api.controller'
+import { ApiController } from './api.controller'
 import { DatabaseModule } from '@database'
 import ormconfig from '@database/ormconfig'
 
