@@ -152,11 +152,12 @@ export class OrderFlowAggregator {
       }
     }
 
-    // Update aggressiveBid and aggressiveAsk based on isBuyerM
+    // If buyer is maker, buy is a limit order, seller is a market order (low ask), seller is aggressive ask
     if (isBuyerMaker) {
       this.activeCandle.aggressiveAsk += volume
       this.activeCandle.priceLevels[price].volSumAsk += volume
     } else {
+      // Else, sell is a limit order, buyer is a market order (high bid), buyer is aggressive bid
       this.activeCandle.aggressiveBid += volume
       this.activeCandle.priceLevels[price].volSumBid += volume
     }
