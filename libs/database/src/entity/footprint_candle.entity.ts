@@ -1,14 +1,16 @@
 /* eslint-disable indent */
 import { Entity, PrimaryGeneratedColumn, Column, Index } from 'typeorm'
 
+export const KlineUniqueColumns = ['exchange', 'symbol', 'interval', 'openTime']
+
 @Entity({ name: 'footprint_candle' })
-@Index('idx_footprint_candle_timestamp', ['timestamp'])
+@Index(KlineUniqueColumns, { unique: true })
 export class FootPrintCandle {
   @PrimaryGeneratedColumn()
   id: number
 
   @Column({ type: 'timestamptz' })
-  timestamp: Date
+  openTime: Date
 
   @Column()
   exchange: string

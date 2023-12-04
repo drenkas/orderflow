@@ -1,6 +1,6 @@
 export interface IFootPrintCandle {
   uuid: string
-  timestamp: string
+  openTime: string
   interval: string
   symbol: string
   exchange: string

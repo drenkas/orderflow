@@ -67,6 +67,11 @@ export class BinanceService {
     }
   }
 
+  @Cron(CronExpression.EVERY_HOUR)
+  async handlePrune() {
+    await this.databaseService.pruneOldData()
+  }
+
   private processNewTrades(isBuyerMM: boolean, positionSize: numberInString, price: numberInString) {
     if (!this.didFinishConnectingWS || !this.activeCandle) return
 
@@ -113,7 +118,7 @@ export class BinanceService {
 
     this.activeCandle = {
       uuid: crypto.randomUUID(),
-      timestamp: now.toISOString(),
+      openTime: now.toISOString(),
       symbol: 'BTCUSDT',
       exchange: 'binance',
       interval: '1m',
