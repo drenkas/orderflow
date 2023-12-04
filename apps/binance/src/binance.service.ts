@@ -17,8 +17,8 @@ export class BinanceService {
   private wsKeyContextStore: Record<string, { symbol: string }> = {}
   private didFinishConnectingWS: boolean = false
 
-  private activeCandles: IFootPrintCandle[] = []
-  private closedCandles: IFootPrintCandle[] = []
+  private activeCandle: IFootPrintCandle
+  private candleQueue: IFootPrintCandle[] = []
 
   constructor(private readonly databaseService: DatabaseService, private readonly binanceWsService: BinanceWebSocketService) {}
 
@@ -54,53 +54,55 @@ export class BinanceService {
     })
 
     this.binanceWsService.tradeUpdates.subscribe((trade: WsMessageAggTradeRaw) => {
-      this.updateLastCandle(trade.m, trade.q, trade.p)
+      this.processNewTrades(trade.m, trade.q, trade.p)
     })
   }
 
   @Cron(CronExpression.EVERY_MINUTE)
   async processCandles() {
     if (this.didFinishConnectingWS) {
-      this.closeLastCandle()
+      this.retireActiveCandle()
       this.createNewCandle()
       await this.persistCandlesToStorage()
     }
   }
 
-  get lastCandle(): IFootPrintCandle {
-    return this.activeCandles[this.activeCandles.length - 1]
-  }
-
-  private updateLastCandle(isBuyerMM: boolean, positionSize: numberInString, price: numberInString) {
-    if (!this.didFinishConnectingWS || !this.lastCandle) return
-
-    const lastCandle = this.lastCandle
+  private processNewTrades(isBuyerMM: boolean, positionSize: numberInString, price: numberInString) {
+    if (!this.didFinishConnectingWS || !this.activeCandle) return
 
     const volume = Number(positionSize)
 
     // Update volume
-    lastCandle.volume += volume
+    this.activeCandle.volume += volume
 
     // Determine which side (bid/ask) and delta direction based on isBuyerMM
     const targetSide = isBuyerMM ? 'ask' : 'bid'
     const deltaChange = isBuyerMM ? -volume : volume
 
     // Update delta
-    lastCandle.delta += deltaChange
+    this.activeCandle.delta += deltaChange
 
     // Update or initialize the bid/ask price volume
-    lastCandle[targetSide][price] = (lastCandle[targetSide][price] || 0) + volume
+    this.activeCandle[targetSide][price] = (this.activeCandle[targetSide][price] || 0) + volume
 
     // Update aggressiveBid and aggressiveAsk based on isBuyerMM
     if (isBuyerMM) {
-      lastCandle.aggressiveAsk += volume
+      this.activeCandle.aggressiveAsk += volume
     } else {
-      lastCandle.aggressiveBid += volume
+      this.activeCandle.aggressiveBid += volume
     }
 
     // Update high and low
-    lastCandle.high = lastCandle.high ? Math.max(lastCandle.high, Number(price)) : Number(price)
-    lastCandle.low = lastCandle.low ? Math.min(lastCandle.low, Number(price)) : Number(price)
+    this.activeCandle.high = this.activeCandle.high ? Math.max(this.activeCandle.high, Number(price)) : Number(price)
+    this.activeCandle.low = this.activeCandle.low ? Math.min(this.activeCandle.low, Number(price)) : Number(price)
+  }
+
+  private retireActiveCandle(): void {
+    if (this.activeCandle) {
+      this.logger.log('closing candle')
+      this.candleQueue.push(this.activeCandle)
+      this.activeCandle = null
+    }
   }
 
   private createNewCandle() {
@@ -109,8 +111,8 @@ export class BinanceService {
 
     this.logger.log(`Creating new candle at ${formattedDate}.`)
 
-    this.activeCandles.push({
-      id: crypto.randomUUID(),
+    this.activeCandle = {
+      uuid: crypto.randomUUID(),
       timestamp: now.toISOString(),
       symbol: 'BTCUSDT',
       exchange: 'binance',
@@ -123,28 +125,16 @@ export class BinanceService {
       low: null,
       bid: {},
       ask: {}
-    } as IFootPrintCandle)
-  }
-
-  private closeLastCandle() {
-    if (this.activeCandles.length > 0) {
-      this.logger.log('closing candle')
-      const candleToClose = this.activeCandles.pop()
-      this.closedCandles.push(candleToClose)
-    }
+    } as IFootPrintCandle
   }
 
   private async persistCandlesToStorage() {
-    const successfulIds: string[] = []
+    if (this.candleQueue.length === 0) return
 
-    for (let i = 0; i < this.closedCandles.length; i++) {
-      this.logger.log('Saving Candle', this.closedCandles[i].id, this.closedCandles[i].timestamp)
-      const isSaved = await this.databaseService.saveFootPrintCandle(this.closedCandles[i])
-      if (isSaved) {
-        successfulIds.push(this.closedCandles[i].id)
-      }
-    }
+    this.logger.log('Saving batch of candles', this.candleQueue.map(c => c.uuid))
+    const savedUUIDs = await this.databaseService.batchSaveFootPrintCandles(this.candleQueue)
 
-    this.closedCandles = this.closedCandles.filter((candle) => !successfulIds.includes(candle.id))
+    // Filter out successfully saved candles
+    this.candleQueue = this.candleQueue.filter(candle => !savedUUIDs.includes(candle.uuid))
   }
 }

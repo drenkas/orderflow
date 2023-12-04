@@ -12,15 +12,22 @@ export class DatabaseService {
     private footprintCandleRepository: Repository<FootPrintCandle>
   ) {}
 
-  async saveFootPrintCandle(candle: IFootPrintCandle): Promise<boolean> {
+  async batchSaveFootPrintCandles(candles: IFootPrintCandle[]): Promise<string[]> {
     try {
-      const cleanedCandle = { ...candle }
-      delete cleanedCandle.id
-      await this.footprintCandleRepository.save(cleanedCandle as Omit<IFootPrintCandle, 'id'>)
-      return true
+      // Clone and clean each candle before saving
+      const cleanedCandles = candles.map(candle => {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { uuid, ...cleanedCandle } = candle // Remove the id
+        return cleanedCandle
+      })
+
+      await this.footprintCandleRepository.save(cleanedCandles)
+
+      // Return the ids of successfully saved candles
+      return candles.map(candle => candle.uuid)
     } catch (error) {
       console.error('Error bulk inserting FootPrintCandles:', error)
-      return false
+      return [] // Returning an empty array or handle differently based on your application's needs
     }
   }
 
