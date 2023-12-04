@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
 import { Repository } from 'typeorm'
 import { FootPrintCandle } from '@database/entity/footprint_candle.entity'
-import { intervalMap } from '@orderflow-api/constants.ts'
+import { intervalMap } from '@api/constants'
 import { CACHE_LIMIT } from '@orderflow/constants'
 import { IFootPrintCandle } from '@orderflow/dto/orderflow.dto'
 
