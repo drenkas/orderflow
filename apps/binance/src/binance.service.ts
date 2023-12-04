@@ -10,6 +10,7 @@ import { OrderFlowAggregator } from '@orderflow/utils/orderFlowAggregator'
 export class BinanceService {
   private logger: Logger = new Logger(BinanceService.name)
   private symbols: string[] = ['BTCUSDT']
+  private BASE_INTERVAL = '1m'
 
   private expectedConnections: Map<string, Date> = new Map()
   private openConnections: Map<string, Date> = new Map()
@@ -61,23 +62,21 @@ export class BinanceService {
       const intervalSizeMs = getMsForInterval(interval)
 
       const maxRowsInMemory = 600
-      this.aggregators[symbol][interval] = new OrderFlowAggregator('binance', symbol, interval, intervalSizeMs, {
+      this.aggregators[symbol] = new OrderFlowAggregator('binance', symbol, interval, intervalSizeMs, {
         maxCacheInMemory: maxRowsInMemory
       })
     }
 
-    return this.aggregators[symbol][interval]
+    return this.aggregators[symbol]
   }
 
   @Cron(CronExpression.EVERY_MINUTE)
   async processMinuteCandleClose() {
     if (this.didFinishConnectingWS) {
       for (const symbol in this.aggregators) {
-        for (const interval in this.aggregators) {
-          const aggr = this.getOrderFlowAggregator(symbol, interval)
-          aggr.processCandleClosed()
-          await this.persistCandlesToStorage(symbol, interval)
-        }
+        const aggr = this.getOrderFlowAggregator(symbol, this.BASE_INTERVAL)
+        aggr.processCandleClosed()
+        await this.persistCandlesToStorage(symbol, this.BASE_INTERVAL)
       }
     }
   }
@@ -92,7 +91,7 @@ export class BinanceService {
       return
     }
 
-    const aggr = this.getOrderFlowAggregator(symbol, '1m')
+    const aggr = this.getOrderFlowAggregator(symbol, this.BASE_INTERVAL)
     aggr.processNewTrades(isBuyerMaker, Number(positionSize), Number(price))
   }
 
