@@ -3,9 +3,9 @@ import { IFootPrintCandle, IFootPrintClosedCandle, IPriceLevelClosed } from '../
 import { getStartOfMinute } from './date'
 
 export interface OrderFlowAggregatorConfig {
-  // TODO: not implemented
+  // Define per-level price precision used to group trades by level
   pricePrecisionDp: number
-  // TODO: defines how many rows to keep in memory before pruning old rows (default is 600)
+  // Defines how many rows to keep in memory before pruning old rows (default is 600)
   maxCacheInMemory: number
   /** If one side has more than x% dominance, consider this an imbalance */
   // imbalanceThresholdPercent: number;
