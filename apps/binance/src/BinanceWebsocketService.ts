@@ -7,7 +7,7 @@ export class BinanceWebSocketService {
   private ws: WebsocketClient
   private tradeUpdates$: Subject<WsMessageAggTradeRaw> = new Subject()
   private connected$: Subject<string> = new Subject()
-  TradeData
+
   constructor() {
     this.initWebSocket()
   }

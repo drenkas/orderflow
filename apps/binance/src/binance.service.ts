@@ -10,7 +10,7 @@ import { OrderFlowAggregator } from '@orderflow/utils/orderFlowAggregator'
 export class BinanceService {
   private logger: Logger = new Logger(BinanceService.name)
   private symbols: string[] = ['BTCUSDT']
-  private BASE_INTERVAL = '1m'
+  private readonly BASE_INTERVAL = '1m'
 
   private expectedConnections: Map<string, Date> = new Map()
   private openConnections: Map<string, Date> = new Map()

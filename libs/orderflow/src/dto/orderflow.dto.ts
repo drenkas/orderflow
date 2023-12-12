@@ -11,8 +11,8 @@ export interface IFootPrintCandle {
   aggressiveAsk: number
   volumeDelta: number
   volume: number
-  high: number
-  low: number
+  high: number | null
+  low: number | null
   // bid: IOrderRow
   // ask: IOrderRow
   /** bid/ask volume grouped by levels (to pricePrecisionDp) */

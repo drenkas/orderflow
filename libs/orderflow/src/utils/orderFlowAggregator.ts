@@ -52,7 +52,9 @@ export class OrderFlowAggregator {
   public markSavedCandles(savedUUIDs: string[]) {
     for (const uuid in savedUUIDs) {
       const candle = this.getAllCandles().find((c) => c.uuid === uuid)
-      candle.didPersistToStore = true
+      if (candle) {
+        candle.didPersistToStore = true
+      }
     }
   }
 
