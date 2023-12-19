@@ -108,7 +108,7 @@ export class BinanceService {
       queuedCandles.map((c) => c.uuid)
     )
 
-    const savedUUIDs = await this.databaseService.batchSaveFootPrintCandles(queuedCandles)
+    const savedUUIDs = await this.databaseService.batchSaveFootPrintCandles([...queuedCandles])
 
     // Filter out successfully saved candles
     aggr.markSavedCandles(savedUUIDs)

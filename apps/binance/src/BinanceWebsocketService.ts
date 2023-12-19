@@ -1,10 +1,12 @@
 import { Injectable } from '@nestjs/common'
 import { Observable, Subject } from 'rxjs'
 import { WebsocketClient, WsMessageAggTradeRaw } from 'binance'
+import { ExchangeAPI, getExchangeLayer } from '@tsquant/exchangeapi'
 
 @Injectable()
 export class BinanceWebSocketService {
   private ws: WebsocketClient
+  private exchangeAPI: ExchangeAPI
   private tradeUpdates$: Subject<WsMessageAggTradeRaw> = new Subject()
   private connected$: Subject<string> = new Subject()
 
@@ -22,9 +24,22 @@ export class BinanceWebSocketService {
 
   private initWebSocket(): void {
     this.ws = new WebsocketClient({})
+    this.exchangeAPI = getExchangeLayer({
+      accountId: 'doesntMatter',
+      exchange: 'paper_binance',
+      expectedMarginMode: 'CROSS',
+      quoteBalanceAsset: 'USDT'
+    })
 
-    this.ws.on('message', (message: WsMessageAggTradeRaw) => {
-      this.tradeUpdates$.next(message)
+    // Ensures exchangeAPI is refreshed
+    this.exchangeAPI.initState()
+
+    this.ws.on('message', async (message: WsMessageAggTradeRaw) => {
+      const roundedPrice = await this.exchangeAPI.getRoundedAssetPrice(message.s, Number(message.p))
+      this.tradeUpdates$.next({
+        ...message,
+        p: roundedPrice
+      })
     })
 
     this.ws.on('open', (event) => {

@@ -27,7 +27,9 @@ export class DatabaseService {
       await this.footprintCandleRepository.save(cleanedCandles)
 
       // Return the ids of successfully saved candles
-      return candles.map((candle) => candle.uuid)
+      const saved = candles.map((candle) => candle.uuid)
+      // console.log(`batch saved candles: `, saved)
+      return saved
     } catch (error) {
       console.error('Error bulk inserting FootPrintCandles:', error)
       return [] // Returning an empty array or handle differently based on your application's needs

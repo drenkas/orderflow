@@ -4,15 +4,16 @@ export interface IFootPrintCandle {
   openTimeMs: number
   closeTime: string
   closeTimeMs: number
+  exchange: string
   interval: string
   symbol: string
-  exchange: string
   aggressiveBid: number
   aggressiveAsk: number
   volumeDelta: number
   volume: number
-  high: number | null
-  low: number | null
+  high: number
+  low: number
+  close: number
   // bid: IOrderRow
   // ask: IOrderRow
   /** bid/ask volume grouped by levels (to pricePrecisionDp) */
@@ -22,6 +23,7 @@ export interface IFootPrintCandle {
 
 export type IFootPrintClosedCandle = IFootPrintCandle & {
   priceLevels: { [price: number]: IPriceLevelClosed }
+  aggressiveImbalancePercent: number
   isClosed: true
   didPersistToStore: boolean
 }
