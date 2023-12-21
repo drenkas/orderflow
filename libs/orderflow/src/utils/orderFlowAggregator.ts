@@ -48,12 +48,12 @@ export class OrderFlowAggregator {
 
   /** Marks which candles have been saved to DB */
   public markSavedCandles(savedUUIDs: string[]) {
-    console.log(`markSavedCandles: ${savedUUIDs}`)
+    // console.log(`markSavedCandles: ${savedUUIDs}`)
     for (const uuid of savedUUIDs) {
       const candle = this.getAllCandles().find((c) => c.uuid === uuid)
       if (candle) {
         candle.didPersistToStore = true
-        console.log(`successfully marked: ${uuid}`)
+        // console.log(`successfully marked: ${uuid}`)
       } else {
         console.log(`no candle found for uuid (${uuid})`, this.getAllCandles())
       }
@@ -89,19 +89,19 @@ export class OrderFlowAggregator {
     )
     for (const levelPrice of levels) {
       const level = candle.priceLevels[levelPrice]
-      const imbalancePercent = (level.volSumBid / level.volSumAsk) * 100 - 100
+      const imbalancePercent = (level.volSumBid / (level.volSumBid + level.volSumAsk)) * 100
       closedPriceLevels[levelPrice] = {
         ...level,
-        imbalancePercent: +imbalancePercent.toFixed(2)
+        bidImbalancePercent: +imbalancePercent.toFixed(2)
       }
     }
 
-    const imbalancePercent = (candle.aggressiveBid / candle.aggressiveAsk) * 100 - 100
+    const imbalancePercent = (candle.aggressiveBid / (candle.aggressiveBid + candle.aggressiveAsk)) * 100
 
     const closedCandle: IFootPrintClosedCandle = {
       ...candle,
       priceLevels: closedPriceLevels,
-      aggressiveImbalancePercent: +imbalancePercent.toFixed(2),
+      aggressiveBidImbalancePercent: +imbalancePercent.toFixed(2),
       isClosed: true,
       didPersistToStore: false
     }

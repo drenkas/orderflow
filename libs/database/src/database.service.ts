@@ -5,6 +5,7 @@ import { FootPrintCandle } from '@database/entity/footprint_candle.entity'
 import { intervalMap } from '@api/constants'
 import { CACHE_LIMIT } from '@orderflow/constants'
 import { IFootPrintCandle } from '@orderflow/dto/orderflow.dto'
+import { FootPrintCandleLevel } from './entity/footprint_candle_level.entity'
 
 @Injectable()
 export class DatabaseService {
@@ -12,17 +13,46 @@ export class DatabaseService {
 
   constructor(
     @InjectRepository(FootPrintCandle)
-    private footprintCandleRepository: Repository<FootPrintCandle>
+    private footprintCandleRepository: Repository<FootPrintCandle>,
+    @InjectRepository(FootPrintCandleLevel)
+    private footprintCandleLevelRepository: Repository<FootPrintCandleLevel>
   ) {}
 
   async batchSaveFootPrintCandles(candles: IFootPrintCandle[]): Promise<string[]> {
     try {
+      const levels: FootPrintCandleLevel[] = []
+
       // Clone and clean each candle before saving
       const cleanedCandles = candles.map((candle) => {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { uuid, ...cleanedCandle } = candle // Remove the id
+        const candleLevels = Object.keys(candle.priceLevels).map((level) => {
+          return {
+            symbol: candle.symbol,
+            openTime: candle.openTime,
+            closeTime: candle.closeTime,
+            exchange: candle.exchange,
+            interval: candle.interval,
+            ...candle.priceLevels[level],
+            priceLevel: Number(level)
+          }
+        })
+
+        levels.push(...candleLevels)
+
+        const cleanedCandle = {
+          ...candle,
+          uuid: undefined,
+          priceLevels: undefined
+        }
+
+        delete cleanedCandle.uuid
+        delete cleanedCandle.priceLevels
+
         return cleanedCandle
       })
+
+      // console.log(`saving data: `, JSON.stringify({ levels, cleanedCandles }, null, 2))
+
+      await this.footprintCandleLevelRepository.save(levels)
 
       await this.footprintCandleRepository.save(cleanedCandles)
 
@@ -72,7 +102,7 @@ export class DatabaseService {
       await this.footprintCandleRepository.query(`
         WITH ranked_rows AS (
           SELECT id, ROW_NUMBER() OVER (
-            PARTITION BY exchange, symbol, interval ORDER BY openTime DESC
+            PARTITION BY exchange, symbol, interval ORDER BY "openTime" DESC
           ) row_number
           FROM footprint_candle
         )

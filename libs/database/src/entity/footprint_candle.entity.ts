@@ -38,7 +38,7 @@ export class FootPrintCandle {
   aggressiveAsk: number
 
   @Column('double precision', { default: 0 })
-  aggressiveImbalancePercent: number
+  aggressiveBidImbalancePercent: number
 
   @Column('double precision')
   high: number

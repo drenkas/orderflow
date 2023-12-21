@@ -23,7 +23,7 @@ export interface IFootPrintCandle {
 
 export type IFootPrintClosedCandle = IFootPrintCandle & {
   priceLevels: { [price: number]: IPriceLevelClosed }
-  aggressiveImbalancePercent: number
+  aggressiveBidImbalancePercent: number
   isClosed: true
   didPersistToStore: boolean
 }
