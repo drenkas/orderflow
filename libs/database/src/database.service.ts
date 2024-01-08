@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { Injectable, Logger } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
 import { Repository } from 'typeorm'
@@ -5,7 +6,27 @@ import { FootPrintCandle } from '@database/entity/footprint_candle.entity'
 import { intervalMap } from '@api/constants'
 import { CACHE_LIMIT } from '@orderflow/constants'
 import { IFootPrintCandle } from '@orderflow/dto/orderflow.dto'
-import { FootPrintCandleLevel } from './entity/footprint_candle_level.entity'
+
+function isPropertyEqual<TLeftObj, TRightObj extends TLeftObj>(
+  leftObject: TLeftObj,
+  rightObject: TRightObj,
+  prop: keyof TLeftObj
+): boolean {
+  const left = leftObject[prop]
+  const right = rightObject[prop]
+
+  if (
+    typeof left === 'object' &&
+    typeof right === 'object' &&
+    left instanceof Date &&
+    right instanceof Date
+  ) {
+    return left.toISOString() === right.toISOString()
+  }
+  const res = left === right
+  // console.log(`isEqual: (${left} == ${right}) = ${res} | typeof (${typeof left})`)
+  return res
+}
 
 @Injectable()
 export class DatabaseService {
@@ -13,51 +34,30 @@ export class DatabaseService {
 
   constructor(
     @InjectRepository(FootPrintCandle)
-    private footprintCandleRepository: Repository<FootPrintCandle>,
-    @InjectRepository(FootPrintCandleLevel)
-    private footprintCandleLevelRepository: Repository<FootPrintCandleLevel>
+    private footprintCandleRepository: Repository<FootPrintCandle>
   ) {}
 
   async batchSaveFootPrintCandles(candles: IFootPrintCandle[]): Promise<string[]> {
     try {
-      const levels: FootPrintCandleLevel[] = []
-
       // Clone and clean each candle before saving
       const cleanedCandles = candles.map((candle) => {
-        const candleLevels = Object.keys(candle.priceLevels).map((level) => {
-          return {
-            symbol: candle.symbol,
-            openTime: candle.openTime,
-            closeTime: candle.closeTime,
-            exchange: candle.exchange,
-            interval: candle.interval,
-            ...candle.priceLevels[level],
-            priceLevel: Number(level)
-          }
-        })
-
-        levels.push(...candleLevels)
-
         const cleanedCandle = {
           ...candle,
-          uuid: undefined,
-          priceLevels: undefined
+          uuid: undefined
         }
 
         delete cleanedCandle.uuid
-        delete cleanedCandle.priceLevels
 
         return cleanedCandle
       })
 
       // console.log(`saving data: `, JSON.stringify({ levels, cleanedCandles }, null, 2))
 
-      await this.footprintCandleLevelRepository.save(levels)
-
       await this.footprintCandleRepository.save(cleanedCandles)
 
       // Return the ids of successfully saved candles
       const saved = candles.map((candle) => candle.uuid)
+
       // console.log(`batch saved candles: `, saved)
       return saved
     } catch (error) {

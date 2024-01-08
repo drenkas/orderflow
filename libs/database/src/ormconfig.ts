@@ -1,7 +1,6 @@
 require('dotenv').config()
 
 import { FootPrintCandle } from '@database/entity/footprint_candle.entity'
-import { FootPrintCandleLevel } from './entity/footprint_candle_level.entity'
 import { TypeOrmModuleOptions } from '@nestjs/typeorm'
 
 export const ORMConfig: TypeOrmModuleOptions = {
@@ -11,6 +10,6 @@ export const ORMConfig: TypeOrmModuleOptions = {
   username: process.env.DB_USERNAME,
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
-  entities: [FootPrintCandle, FootPrintCandleLevel],
+  entities: [FootPrintCandle],
   synchronize: true
 }

@@ -1,5 +1,6 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable indent */
-import { Entity, PrimaryGeneratedColumn, Column, Index } from 'typeorm'
+import { Entity, PrimaryGeneratedColumn, Column, Index, OneToMany, JoinColumn } from 'typeorm'
 import { IPriceLevelClosed } from '../../../orderflow/src/dto/orderflow.dto'
 
 export const KlineUniqueColumns = ['exchange', 'symbol', 'interval', 'openTime', 'closeTime']
@@ -51,5 +52,7 @@ export class FootPrintCandle {
 
   // Storing bid and ask as JSON
   @Column('jsonb', { default: {} })
+  // @OneToMany(() => FootPrintCandleLevel, (level) => level.closeTime)
+  // @JoinColumn()
   priceLevels: Record<string, IPriceLevelClosed>
 }

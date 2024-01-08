@@ -19,9 +19,14 @@ export class BinanceService {
 
   private aggregators: { [symbol: string]: OrderFlowAggregator } = {}
 
-  constructor(private readonly databaseService: DatabaseService, private readonly binanceWsService: BinanceWebSocketService) {}
+  constructor(
+    private readonly databaseService: DatabaseService,
+    private readonly binanceWsService: BinanceWebSocketService
+  ) {}
 
   async onModuleInit() {
+    this.logger.log(`Starting binance service (WS etc)`)
+
     await this.subscribeToWS()
   }
 
@@ -86,7 +91,12 @@ export class BinanceService {
     await this.databaseService.pruneOldData()
   }
 
-  private processNewTrades(symbol: string, isBuyerMaker: boolean, positionSize: numberInString, price: numberInString) {
+  private processNewTrades(
+    symbol: string,
+    isBuyerMaker: boolean,
+    positionSize: numberInString,
+    price: numberInString
+  ) {
     if (!this.didFinishConnectingWS) {
       return
     }
