@@ -24,7 +24,13 @@ export class OrderFlowAggregator {
   /** Queue of candles that may not yet have reached the DB yet (closed candles) */
   private candleQueue: IFootPrintClosedCandle[] = []
 
-  constructor(exchange: string, symbol: string, interval: string, intervalSizeMs: number, config?: Partial<OrderFlowAggregatorConfig>) {
+  constructor(
+    exchange: string,
+    symbol: string,
+    interval: string,
+    intervalSizeMs: number,
+    config?: Partial<OrderFlowAggregatorConfig>
+  ) {
     this.exchange = exchange
     this.symbol = symbol
     this.interval = interval
@@ -70,7 +76,9 @@ export class OrderFlowAggregator {
     // Trim store to last x candles, based on config
     const rowsToTrim = this.candleQueue.length - MAX_QUEUE_LENGTH
 
-    console.log(`removing ${rowsToTrim} candles from aggregator queue. Length before: ${this.candleQueue.length}`)
+    console.log(
+      `removing ${rowsToTrim} candles from aggregator queue. Length before: ${this.candleQueue.length}`
+    )
     this.candleQueue.splice(0, rowsToTrim)
     console.log(`len after: ${this.candleQueue.length}`)
   }
@@ -90,10 +98,13 @@ export class OrderFlowAggregator {
     for (const levelPrice of levels) {
       const level = candle.priceLevels[levelPrice]
       const imbalancePercent = (level.volSumBid / (level.volSumBid + level.volSumAsk)) * 100
-      closedPriceLevels[levelPrice] = {
+
+      const closedLevel: IPriceLevelClosed = {
         ...level,
         bidImbalancePercent: +imbalancePercent.toFixed(2)
       }
+
+      closedPriceLevels[levelPrice] = closedLevel
     }
 
     const imbalancePercent = (candle.aggressiveBid / (candle.aggressiveBid + candle.aggressiveAsk)) * 100
@@ -101,7 +112,7 @@ export class OrderFlowAggregator {
     const closedCandle: IFootPrintClosedCandle = {
       ...candle,
       priceLevels: closedPriceLevels,
-      aggressiveBidImbalancePercent: +imbalancePercent.toFixed(2),
+      bidImbalancePercent: +imbalancePercent.toFixed(2),
       isClosed: true,
       didPersistToStore: false
     }
@@ -110,7 +121,13 @@ export class OrderFlowAggregator {
     delete this.activeCandle
   }
 
-  public createNewCandle(exchange: string, symbol: string, interval: string, intervalSizeMs: number, startDate: Date = getStartOfMinute()) {
+  public createNewCandle(
+    exchange: string,
+    symbol: string,
+    interval: string,
+    intervalSizeMs: number,
+    startDate: Date = getStartOfMinute()
+  ) {
     const closeTimeMs = startDate.getTime() + intervalSizeMs - 1
 
     const candle: IFootPrintCandle = {
@@ -160,7 +177,9 @@ export class OrderFlowAggregator {
     // Update delta
     this.activeCandle.volumeDelta += deltaChange
 
-    const precisionTrimmedPrice = this.config.pricePrecisionDp ? +price.toFixed(this.config.pricePrecisionDp) : price
+    const precisionTrimmedPrice = this.config.pricePrecisionDp
+      ? +price.toFixed(this.config.pricePrecisionDp)
+      : price
 
     // Initialise the price level, if it doesn't exist yet
     // TODO: do price step size rounding here
@@ -182,8 +201,12 @@ export class OrderFlowAggregator {
     }
 
     // Update high and low
-    this.activeCandle.high = this.activeCandle.high ? Math.max(this.activeCandle.high, Number(price)) : Number(price)
-    this.activeCandle.low = this.activeCandle.low ? Math.min(this.activeCandle.low, Number(price)) : Number(price)
+    this.activeCandle.high = this.activeCandle.high
+      ? Math.max(this.activeCandle.high, Number(price))
+      : Number(price)
+    this.activeCandle.low = this.activeCandle.low
+      ? Math.min(this.activeCandle.low, Number(price))
+      : Number(price)
     this.activeCandle.close = Number(price)
   }
 }

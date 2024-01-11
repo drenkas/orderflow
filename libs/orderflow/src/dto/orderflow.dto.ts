@@ -14,16 +14,16 @@ export interface IFootPrintCandle {
   high: number
   low: number
   close: number
-  // bid: IOrderRow
-  // ask: IOrderRow
   /** bid/ask volume grouped by levels (to pricePrecisionDp) */
   priceLevels: { [price: number]: IPriceLevel }
   isClosed: boolean
 }
 
+export type IPriceLevelsClosed = { [price: number]: IPriceLevelClosed }
+
 export type IFootPrintClosedCandle = IFootPrintCandle & {
-  priceLevels: { [price: number]: IPriceLevelClosed }
-  aggressiveBidImbalancePercent: number
+  priceLevels: IPriceLevelsClosed
+  bidImbalancePercent: number
   isClosed: true
   didPersistToStore: boolean
 }
@@ -37,4 +37,4 @@ export interface IPriceLevel {
   volSumAsk: number
 }
 
-export type IPriceLevelClosed = IPriceLevel & { imbalancePercent: number }
+export type IPriceLevelClosed = IPriceLevel & { bidImbalancePercent: number }

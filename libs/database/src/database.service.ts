@@ -7,27 +7,6 @@ import { intervalMap } from '@api/constants'
 import { CACHE_LIMIT } from '@orderflow/constants'
 import { IFootPrintCandle } from '@orderflow/dto/orderflow.dto'
 
-function isPropertyEqual<TLeftObj, TRightObj extends TLeftObj>(
-  leftObject: TLeftObj,
-  rightObject: TRightObj,
-  prop: keyof TLeftObj
-): boolean {
-  const left = leftObject[prop]
-  const right = rightObject[prop]
-
-  if (
-    typeof left === 'object' &&
-    typeof right === 'object' &&
-    left instanceof Date &&
-    right instanceof Date
-  ) {
-    return left.toISOString() === right.toISOString()
-  }
-  const res = left === right
-  // console.log(`isEqual: (${left} == ${right}) = ${res} | typeof (${typeof left})`)
-  return res
-}
-
 @Injectable()
 export class DatabaseService {
   private logger: Logger = new Logger(DatabaseService.name)
@@ -63,6 +42,20 @@ export class DatabaseService {
     } catch (error) {
       console.error('Error bulk inserting FootPrintCandles:', error)
       return [] // Returning an empty array or handle differently based on your application's needs
+    }
+  }
+
+  async getTestCandles(): Promise<any[]> {
+    const query = this.footprintCandleRepository
+      .createQueryBuilder('candle')
+      .select('*')
+      .where('candle.id IN (1,2,3,4)')
+
+    try {
+      return await query.getRawMany()
+    } catch (error) {
+      console.error('Error getTestCandles', error)
+      throw error
     }
   }
 
