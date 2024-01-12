@@ -1,4 +1,17 @@
-const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+const months = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December'
+]
 
 export const createFormattedDate = (date: Date): string => {
   const dayOfMonth = date.getDate()
@@ -27,4 +40,18 @@ export function getMsForInterval(interval: string): number {
     throw new Error(`Unknown ms per interval "${interval}"`)
   }
   return ms
+}
+
+/**
+ * Get the oldest date in an array of dates
+ */
+export function getOldestDate(arrayOfDates: Date[]): Date {
+  return arrayOfDates.reduce((c, n) => (n < c ? n : c))
+}
+
+/**
+ * Get the most recent data in an array of dates
+ */
+export function getNewestDate(arrayOfDates: Date[]): Date {
+  return arrayOfDates.reduce((c, n) => (n > c ? n : c))
 }

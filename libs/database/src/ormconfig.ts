@@ -1,8 +1,9 @@
 require('dotenv').config()
 
 import { FootPrintCandle } from '@database/entity/footprint_candle.entity'
+import { TypeOrmModuleOptions } from '@nestjs/typeorm'
 
-export default {
+export const ORMConfig: TypeOrmModuleOptions = {
   type: 'postgres',
   host: process.env.DB_HOST,
   port: Number(process.env.DB_PORT),

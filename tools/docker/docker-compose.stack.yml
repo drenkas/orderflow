@@ -1,0 +1,35 @@
+version: '3.8'
+
+networks:
+  timescaledb:
+
+services:
+  cache:
+    image: redis:6.2-alpine
+    restart: always
+    ports:
+      - '6379:6379'
+    command: redis-server --save 20 1 --loglevel warning --requirepass redispass123
+    volumes:
+      - cache:/data
+
+  timescaledb:
+    image: timescale/timescaledb:latest-pg14
+    command: postgres -c shared_preload_libraries=timescaledb
+    networks:
+      - timescaledb
+    ports:
+      - '5432:5432'
+    environment:
+      - PGDATA=/var/lib/postgresql/data/timescaledb
+      - POSTGRES_DB=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    volumes:
+      - timescale-db-volume:/var/lib/postgresql/data/timescaledb
+
+volumes:
+  cache:
+    driver: local
+  timescale-db-volume:
+    external: true

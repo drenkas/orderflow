@@ -1,11 +1,11 @@
 import { Module } from '@nestjs/common'
-import { TypeOrmModule, TypeOrmModuleOptions } from '@nestjs/typeorm'
+import { TypeOrmModule } from '@nestjs/typeorm'
 import { ApiController } from './api.controller'
 import { DatabaseModule } from '@database'
-import ormconfig from '@database/ormconfig'
+import { ORMConfig } from '@database/ormconfig'
 
 @Module({
-  imports: [TypeOrmModule.forRoot(ormconfig as TypeOrmModuleOptions), DatabaseModule],
+  imports: [TypeOrmModule.forRoot(ORMConfig), DatabaseModule],
   controllers: [ApiController]
 })
 export class OrderflowApiModule {}

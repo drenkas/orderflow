@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { Injectable, Logger } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
 import { Repository } from 'typeorm'
@@ -19,18 +20,42 @@ export class DatabaseService {
     try {
       // Clone and clean each candle before saving
       const cleanedCandles = candles.map((candle) => {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { uuid, ...cleanedCandle } = candle // Remove the id
+        const cleanedCandle = {
+          ...candle,
+          uuid: undefined
+        }
+
+        delete cleanedCandle.uuid
+
         return cleanedCandle
       })
+
+      // console.log(`saving data: `, JSON.stringify({ levels, cleanedCandles }, null, 2))
 
       await this.footprintCandleRepository.save(cleanedCandles)
 
       // Return the ids of successfully saved candles
-      return candles.map((candle) => candle.uuid)
+      const saved = candles.map((candle) => candle.uuid)
+
+      // console.log(`batch saved candles: `, saved)
+      return saved
     } catch (error) {
       console.error('Error bulk inserting FootPrintCandles:', error)
       return [] // Returning an empty array or handle differently based on your application's needs
+    }
+  }
+
+  async getTestCandles(): Promise<any[]> {
+    const query = this.footprintCandleRepository
+      .createQueryBuilder('candle')
+      .select('*')
+      .where('candle.id IN (1,2,3,4)')
+
+    try {
+      return await query.getRawMany()
+    } catch (error) {
+      console.error('Error getTestCandles', error)
+      throw error
     }
   }
 
@@ -70,7 +95,7 @@ export class DatabaseService {
       await this.footprintCandleRepository.query(`
         WITH ranked_rows AS (
           SELECT id, ROW_NUMBER() OVER (
-            PARTITION BY exchange, symbol, interval ORDER BY openTime DESC
+            PARTITION BY exchange, symbol, interval ORDER BY "openTime" DESC
           ) row_number
           FROM footprint_candle
         )

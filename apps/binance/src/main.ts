@@ -2,6 +2,8 @@ import { NestFactory } from '@nestjs/core'
 import { BinanceModule } from './binance.module'
 
 async function bootstrap() {
+  console.log(new Date(), `Starting apps/binance...`)
+
   const app = await NestFactory.create(BinanceModule)
 
   setupExceptionCatchers()
