@@ -16,7 +16,7 @@ services:
     entrypoint: ['node', 'dist/main.js']
     ports:
       - 5000:3000
-  orderflow-binance:
+  binance:
     restart: always
     build:
       context: .
@@ -32,7 +32,7 @@ services:
     entrypoint: ['node', 'dist/main.js']
     ports:
       - 5001:3000
-  orderflow-bybit:
+  bybit:
     restart: always
     build:
       context: .

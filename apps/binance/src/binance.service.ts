@@ -3,8 +3,8 @@ import { Cron, CronExpression } from '@nestjs/schedule'
 import { DatabaseService } from '@database/database.service'
 import { numberInString, WsMessageAggTradeRaw } from 'binance'
 import { BinanceWebSocketService } from 'apps/binance/src/BinanceWebsocketService'
-import { getMsForInterval } from '@orderflow/utils/date'
 import { OrderFlowAggregator } from '@orderflow/utils/orderFlowAggregator'
+import { KlineIntervalMs } from '@tsquant/exchangeapi/dist/lib/constants'
 
 @Injectable()
 export class BinanceService {
@@ -64,7 +64,10 @@ export class BinanceService {
 
   private getOrderFlowAggregator(symbol: string, interval: string): OrderFlowAggregator {
     if (!this.aggregators[symbol]) {
-      const intervalSizeMs = getMsForInterval(interval)
+      const intervalSizeMs: number = KlineIntervalMs[interval]
+      if (!intervalSizeMs) {
+        throw new Error(`Unknown ms per interval "${interval}"`)
+      }
 
       const maxRowsInMemory = 600
       this.aggregators[symbol] = new OrderFlowAggregator('binance', symbol, interval, intervalSizeMs, {
