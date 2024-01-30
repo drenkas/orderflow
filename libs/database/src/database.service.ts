@@ -2,10 +2,12 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
 import { Repository } from 'typeorm'
-import { FootPrintCandle } from '@database/entity/footprint_candle.entity'
 import { intervalMap } from '@api/constants'
+import { FootPrintCandle } from '@database/entity/footprint_candle.entity'
 import { CACHE_LIMIT } from '@orderflow/constants'
 import { IFootPrintCandle } from '@orderflow/dto/orderflow.dto'
+import { EXCHANGE_DATA_TYPES } from '@tsquant/exchangeapi/dist/lib/constants'
+import { LastStoredSymbolIntervalTimestampsDictionary } from '@tsquant/exchangeapi/dist/lib/types'
 
 @Injectable()
 export class DatabaseService {
@@ -46,10 +48,7 @@ export class DatabaseService {
   }
 
   async getTestCandles(): Promise<any[]> {
-    const query = this.footprintCandleRepository
-      .createQueryBuilder('candle')
-      .select('*')
-      .where('candle.id IN (1,2,3,4)')
+    const query = this.footprintCandleRepository.createQueryBuilder('candle').select('*').where('candle.id IN (1,2,3,4)')
 
     try {
       return await query.getRawMany()
@@ -90,6 +89,7 @@ export class DatabaseService {
       throw error
     }
   }
+
   async pruneOldData(): Promise<void> {
     try {
       await this.footprintCandleRepository.query(`
@@ -106,6 +106,34 @@ export class DatabaseService {
       `)
     } catch (err) {
       this.logger.error('Failed to prune old data:', err)
+    }
+  }
+
+  /** Fetch the last stored timestamp data to continue where we left off. Timestamp is the openTime for kLines */
+  async getLastTimestamp(exchange: string, symbol?: string): Promise<LastStoredSymbolIntervalTimestampsDictionary> {
+    try {
+      const params = symbol ? [exchange, symbol] : [exchange]
+      const query = `
+      SELECT symbol, interval, MAX(openTime) as max_timestamp
+      FROM footprint_candle
+      WHERE exchange = $1${symbol ? ' AND symbol = $2' : ''}
+      GROUP BY symbol, interval
+    `
+
+      const result = await this.footprintCandleRepository.query(query, params)
+      const resultMap: LastStoredSymbolIntervalTimestampsDictionary = {}
+
+      result.forEach((row) => {
+        if (!resultMap[row.symbol]) {
+          resultMap[row.symbol] = {}
+        }
+        resultMap[row.symbol][row.interval] = row.max_timestamp ? new Date(row.max_timestamp).getTime() : 0
+      })
+
+      return resultMap
+    } catch (err) {
+      this.logger.error('Failed to retrieve last timestamps:', err)
+      return {}
     }
   }
 }

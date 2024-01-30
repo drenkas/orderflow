@@ -92,10 +92,10 @@ export class OrderFlowAggregator {
 
     const closedPriceLevels: { [price: number]: IPriceLevelClosed } = {}
 
-    const levels = Object.keys(candle.priceLevels).sort(
+    const sortedLevels: string[] = Object.keys(candle.priceLevels).sort(
       (a, b) => Number(b) - Number(a) // descending price
     )
-    for (const levelPrice of levels) {
+    for (const levelPrice of sortedLevels) {
       const level = candle.priceLevels[levelPrice]
       const imbalancePercent = (level.volSumBid / (level.volSumBid + level.volSumAsk)) * 100
 

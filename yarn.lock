@@ -934,10 +934,10 @@
   resolved "https://registry.yarnpkg.com/@tsconfig/node16/-/node16-1.0.4.tgz#0b92dcc0cc1c81f6f306a381f28e31b1a56536e9"
   integrity sha512-vxhUy4J8lyeyinH7Azl1pdd43GJhZH/tP2weN8TntQblOY+A0XbT8DJk1/oCPuOOyg/Ja757rG0CgHcWC8OfMA==
 
-"@tsquant/exchangeapi@^0.0.31":
-  version "0.0.31"
-  resolved "https://registry.yarnpkg.com/@tsquant/exchangeapi/-/exchangeapi-0.0.31.tgz#6bc3665cd882b66fe2599bebc13e27617db5d573"
-  integrity sha512-JhWI9Jkht5Qtv7pKRMAs7wiMMo7lxE9el6awbAEaBBMybLxU+GEuj+QujySR5kA8PMIE8HgpR6OoVAl8kB7X3Q==
+"@tsquant/exchangeapi@^0.0.32":
+  version "0.0.32"
+  resolved "https://registry.yarnpkg.com/@tsquant/exchangeapi/-/exchangeapi-0.0.32.tgz#80dbe8fbad2ce74514a566461997376db8510439"
+  integrity sha512-n8gY8HBCqu7FdM2vgC7RDCoE884QB3kSWsax8rVvOFj9wZLZfmVwa/a6k5hO4tbekgQT17jzqKWCV5TP/ZLemg==
   dependencies:
     "@tsquant/papertradr" "^0.1.53"
     binance "^2.9.0"

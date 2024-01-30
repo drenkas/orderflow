@@ -1,16 +1,34 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { Cron, CronExpression } from '@nestjs/schedule'
 import { DatabaseService } from '@database/database.service'
-import { numberInString, WsMessageAggTradeRaw } from 'binance'
-import { BinanceWebSocketService } from 'apps/binance/src/BinanceWebsocketService'
 import { OrderFlowAggregator } from '@orderflow/utils/orderFlowAggregator'
-import { KlineIntervalMs } from '@tsquant/exchangeapi/dist/lib/constants'
+import { Exchange, KlineIntervalMs } from '@tsquant/exchangeapi/dist/lib/constants'
+import { INTERVALS } from '@tsquant/exchangeapi/dist/lib/constants/candles'
+import { LastStoredSymbolIntervalTimestampsDictionary } from '@tsquant/exchangeapi/dist/lib/types/candles.types'
+import { BinanceWebSocketService } from 'apps/binance/src/BinanceWebsocketService'
+import { numberInString, WsMessageAggTradeRaw } from 'binance'
+import { getStartOfMinute } from '@orderflow/utils/date'
 
 @Injectable()
 export class BinanceService {
   private logger: Logger = new Logger(BinanceService.name)
   private symbols: string[] = ['BTCUSDT']
   private readonly BASE_INTERVAL = '1m'
+  private readonly LARGER_AGGREGATION_INTERVALS = [
+    INTERVALS.FIVE_MINUTES,
+    INTERVALS.FIFTEEN_MINUTES,
+    INTERVALS.THIRTY_MINUTES,
+    INTERVALS.ONE_HOUR,
+    INTERVALS.TWO_HOURS,
+    INTERVALS.FOUR_HOURS,
+    INTERVALS.EIGHT_HOURS,
+    INTERVALS.TWELVE_HOURS,
+    INTERVALS.ONE_DAY,
+    INTERVALS.ONE_WEEK,
+    INTERVALS.ONE_MONTH
+  ]
+
+  private lastTimestamps: LastStoredSymbolIntervalTimestampsDictionary = {}
 
   private expectedConnections: Map<string, Date> = new Map()
   private openConnections: Map<string, Date> = new Map()
@@ -19,10 +37,7 @@ export class BinanceService {
 
   private aggregators: { [symbol: string]: OrderFlowAggregator } = {}
 
-  constructor(
-    private readonly databaseService: DatabaseService,
-    private readonly binanceWsService: BinanceWebSocketService
-  ) {}
+  constructor(private readonly databaseService: DatabaseService, private readonly binanceWsService: BinanceWebSocketService) {}
 
   async onModuleInit() {
     this.logger.log(`Starting binance service (WS etc)`)
@@ -85,6 +100,35 @@ export class BinanceService {
         const aggr = this.getOrderFlowAggregator(symbol, this.BASE_INTERVAL)
         aggr.processCandleClosed()
         await this.persistCandlesToStorage(symbol, this.BASE_INTERVAL)
+
+        const currentDate = new Date()
+        const currentMinute = currentDate.getMinutes()
+        const startDate: Date = getStartOfMinute()
+        const openTimeMS: number = startDate.getTime()
+        const isMultipleOfFive = currentMinute % 5 === 0
+        if (isMultipleOfFive) {
+          for (const interval of this.LARGER_AGGREGATION_INTERVALS) {
+            if (!this.lastTimestamps[symbol]) {
+              this.lastTimestamps[symbol] = {}
+            }
+            if (!this.lastTimestamps[symbol][interval]) {
+              const resultMap: LastStoredSymbolIntervalTimestampsDictionary = await this.databaseService.getLastTimestamp(Exchange.BINANCE, symbol)
+
+              if (resultMap[symbol]?.[interval]) {
+                this.lastTimestamps[symbol][interval] = resultMap[symbol][interval]
+              }
+            }
+
+            if (this.lastTimestamps[symbol][interval]) {
+              const nextExpectedCandleMS = this.lastTimestamps[symbol][interval] + KlineIntervalMs[interval]
+              if (openTimeMS === nextExpectedCandleMS) {
+                
+              }
+            } else {
+              //
+            }
+          }
+        }
       }
     }
   }
@@ -94,12 +138,7 @@ export class BinanceService {
     await this.databaseService.pruneOldData()
   }
 
-  private processNewTrades(
-    symbol: string,
-    isBuyerMaker: boolean,
-    positionSize: numberInString,
-    price: numberInString
-  ) {
+  private processNewTrades(symbol: string, isBuyerMaker: boolean, positionSize: numberInString, price: numberInString) {
     if (!this.didFinishConnectingWS) {
       return
     }
