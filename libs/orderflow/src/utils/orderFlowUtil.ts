@@ -1,9 +1,10 @@
-import { IFootPrintClosedCandle, IPriceLevelsClosed } from '../dto/orderflow.dto'
+import { FootPrintCandle } from '@database/entity/footprint_candle.entity'
+import { IPriceLevelsClosed } from '../dto/orderflow.dto'
 import { mergeDedupeArrays, descendingOrder } from './array'
 import { getOldestDate, getNewestDate } from './date'
 import { doMathOnProp } from './math'
 
-export function mergeFootPrintCandles(candles: IFootPrintClosedCandle[]): IFootPrintClosedCandle {
+export function mergeFootPrintCandles(candles: FootPrintCandle[]): FootPrintCandle {
   if (!candles.length) {
     throw new Error('no candles!')
   }
@@ -13,7 +14,7 @@ export function mergeFootPrintCandles(candles: IFootPrintClosedCandle[]): IFootP
   }
 
   const [firstCandle, ...otherCandles] = candles
-  const aggrCandle: IFootPrintClosedCandle = {
+  const aggrCandle: FootPrintCandle = {
     ...structuredClone(firstCandle)
   }
 
@@ -21,8 +22,8 @@ export function mergeFootPrintCandles(candles: IFootPrintClosedCandle[]): IFootP
     const openDts = [new Date(aggrCandle.openTime), new Date(candle.openTime)]
     const closeDts = [new Date(aggrCandle.closeTime), new Date(candle.closeTime)]
 
-    aggrCandle.openTime = getOldestDate(openDts).toISOString()
-    aggrCandle.closeTime = getNewestDate(closeDts).toISOString()
+    aggrCandle.openTime = getOldestDate(openDts)
+    aggrCandle.closeTime = getNewestDate(closeDts)
 
     aggrCandle.volumeDelta = doMathOnProp(aggrCandle, candle, 'volumeDelta', '+')
     aggrCandle.volume = doMathOnProp(aggrCandle, candle, 'volume', '+')

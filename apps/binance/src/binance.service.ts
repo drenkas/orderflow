@@ -1,13 +1,15 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { Cron, CronExpression } from '@nestjs/schedule'
+import { FootPrintCandle } from '@database'
 import { DatabaseService } from '@database/database.service'
+import { getStartOfMinute } from '@orderflow/utils/date'
 import { OrderFlowAggregator } from '@orderflow/utils/orderFlowAggregator'
+import { mergeFootPrintCandles } from '@orderflow/utils/orderFlowUtil'
 import { Exchange, KlineIntervalMs } from '@tsquant/exchangeapi/dist/lib/constants'
 import { INTERVALS } from '@tsquant/exchangeapi/dist/lib/constants/candles'
 import { LastStoredSymbolIntervalTimestampsDictionary } from '@tsquant/exchangeapi/dist/lib/types/candles.types'
 import { BinanceWebSocketService } from 'apps/binance/src/BinanceWebsocketService'
 import { numberInString, WsMessageAggTradeRaw } from 'binance'
-import { getStartOfMinute } from '@orderflow/utils/date'
 
 @Injectable()
 export class BinanceService {
@@ -120,9 +122,18 @@ export class BinanceService {
             }
 
             if (this.lastTimestamps[symbol][interval]) {
-              const nextExpectedCandleMS = this.lastTimestamps[symbol][interval] + KlineIntervalMs[interval]
+              const nextExpectedCandleMS: number = this.lastTimestamps[symbol][interval] + KlineIntervalMs[interval]
+              const endDate: Date = new Date(nextExpectedCandleMS)
               if (openTimeMS === nextExpectedCandleMS) {
-                
+                const candles: FootPrintCandle[] = await this.databaseService.getCandles(Exchange.BINANCE, symbol, interval, startDate, endDate)
+
+                if (candles?.length) {
+                  const newCandle: FootPrintCandle = mergeFootPrintCandles(candles)
+
+                  if (newCandle) {
+                    await this.databaseService.batchSaveFootPrintCandles([newCandle])
+                  }
+                }
               }
             } else {
               //
