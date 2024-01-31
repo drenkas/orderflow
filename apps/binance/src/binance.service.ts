@@ -1,8 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { Cron, CronExpression } from '@nestjs/schedule'
-import { FootPrintCandle } from '@database'
+import { intervalMap } from '@api/constants'
 import { DatabaseService } from '@database/database.service'
-import { getStartOfMinute } from '@orderflow/utils/date'
+import { isMultipleOf } from '@orderflow/utils/math'
 import { OrderFlowAggregator } from '@orderflow/utils/orderFlowAggregator'
 import { mergeFootPrintCandles } from '@orderflow/utils/orderFlowUtil'
 import { Exchange, KlineIntervalMs } from '@tsquant/exchangeapi/dist/lib/constants'
@@ -10,6 +10,8 @@ import { INTERVALS } from '@tsquant/exchangeapi/dist/lib/constants/candles'
 import { LastStoredSymbolIntervalTimestampsDictionary } from '@tsquant/exchangeapi/dist/lib/types/candles.types'
 import { BinanceWebSocketService } from 'apps/binance/src/BinanceWebsocketService'
 import { numberInString, WsMessageAggTradeRaw } from 'binance'
+
+const isMinuteMultipleOfFive = isMultipleOf(5)
 
 @Injectable()
 export class BinanceService {
@@ -103,40 +105,19 @@ export class BinanceService {
         aggr.processCandleClosed()
         await this.persistCandlesToStorage(symbol, this.BASE_INTERVAL)
 
-        const currentDate = new Date()
-        const currentMinute = currentDate.getMinutes()
-        const startDate: Date = getStartOfMinute()
-        const openTimeMS: number = startDate.getTime()
-        const isMultipleOfFive = currentMinute % 5 === 0
-        if (isMultipleOfFive) {
+        const closeDate = new Date()
+        closeDate.setMinutes(closeDate.getMinutes() + 1, 0, 0)
+        const closeMinute: number = closeDate.getMinutes()
+        const closeTimeMS: number = closeDate.getTime()
+        const isCloseMinuteMultipleOfFive: boolean = isMinuteMultipleOfFive(closeMinute)
+
+        if (isCloseMinuteMultipleOfFive) {
           for (const interval of this.LARGER_AGGREGATION_INTERVALS) {
-            if (!this.lastTimestamps[symbol]) {
-              this.lastTimestamps[symbol] = {}
-            }
-            if (!this.lastTimestamps[symbol][interval]) {
-              const resultMap: LastStoredSymbolIntervalTimestampsDictionary = await this.databaseService.getLastTimestamp(Exchange.BINANCE, symbol)
+            await this.updateLastTimestamps(symbol, interval)
+            const lastTimestamp = this.lastTimestamps[symbol][interval]
 
-              if (resultMap[symbol]?.[interval]) {
-                this.lastTimestamps[symbol][interval] = resultMap[symbol][interval]
-              }
-            }
-
-            if (this.lastTimestamps[symbol][interval]) {
-              const nextExpectedCandleMS: number = this.lastTimestamps[symbol][interval] + KlineIntervalMs[interval]
-              const endDate: Date = new Date(nextExpectedCandleMS)
-              if (openTimeMS === nextExpectedCandleMS) {
-                const candles: FootPrintCandle[] = await this.databaseService.getCandles(Exchange.BINANCE, symbol, interval, startDate, endDate)
-
-                if (candles?.length) {
-                  const newCandle: FootPrintCandle = mergeFootPrintCandles(candles)
-
-                  if (newCandle) {
-                    await this.databaseService.batchSaveFootPrintCandles([newCandle])
-                  }
-                }
-              }
-            } else {
-              //
+            if (lastTimestamp && closeTimeMS === lastTimestamp + KlineIntervalMs[interval]) {
+              await this.processLargerInterval(symbol, interval, closeDate, lastTimestamp)
             }
           }
         }
@@ -147,6 +128,33 @@ export class BinanceService {
   @Cron(CronExpression.EVERY_HOUR)
   async handlePrune() {
     await this.databaseService.pruneOldData()
+  }
+
+  async updateLastTimestamps(symbol: string, interval: INTERVALS) {
+    if (!this.lastTimestamps[symbol]) {
+      this.lastTimestamps[symbol] = {}
+    }
+
+    if (!this.lastTimestamps[symbol][interval]) {
+      const resultMap = await this.databaseService.getLastTimestamp(Exchange.BINANCE, symbol)
+      if (resultMap[symbol]?.[interval]) {
+        this.lastTimestamps[symbol][interval] = resultMap[symbol][interval]
+      }
+    }
+  }
+
+  async processLargerInterval(symbol: string, interval: INTERVALS, closeDate: Date, lastTimestamp: number) {
+    const candleStartDate = new Date(lastTimestamp)
+
+    const candles = await this.databaseService.getCandles(Exchange.BINANCE, symbol, interval, candleStartDate, closeDate)
+    const requiredCandlesLength: number = intervalMap[interval]
+
+    if (candles?.length === requiredCandlesLength) {
+      const newCandle = mergeFootPrintCandles(candles, interval)
+      if (newCandle) {
+        await this.databaseService.batchSaveFootPrintCandles([newCandle])
+      }
+    }
   }
 
   private processNewTrades(symbol: string, isBuyerMaker: boolean, positionSize: numberInString, price: numberInString) {

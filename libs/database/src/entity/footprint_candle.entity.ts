@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable indent */
-import { Entity, PrimaryGeneratedColumn, Column, Index, OneToMany, JoinColumn } from 'typeorm'
+import { Entity, PrimaryGeneratedColumn, Column, Index } from 'typeorm'
 import { IPriceLevelClosed } from '../../../orderflow/src/dto/orderflow.dto'
 
-export const KlineUniqueColumns = ['exchange', 'symbol', 'interval', 'openTime', 'closeTime']
+export const KlineUniqueColumns = ['exchange', 'symbol', 'interval', 'openTime', 'closeTime', 'openTimeMs', 'closeTimeMs']
 
 @Entity({ name: 'footprint_candle' })
 @Index(KlineUniqueColumns, { unique: true })
@@ -16,6 +16,12 @@ export class FootPrintCandle {
 
   @Column({ type: 'timestamptz' })
   closeTime: Date
+
+  @Column({ type: 'bigint' })
+  openTimeMs: number
+
+  @Column({ type: 'bigint' })
+  closeTimeMs: number
 
   @Column()
   exchange: string

@@ -1,48 +1,80 @@
 import { FootPrintCandle } from '@database/entity/footprint_candle.entity'
-import { IPriceLevelsClosed } from '../dto/orderflow.dto'
+import { IFootPrintClosedCandle, IPriceLevelsClosed } from '../dto/orderflow.dto'
 import { mergeDedupeArrays, descendingOrder } from './array'
 import { getOldestDate, getNewestDate } from './date'
 import { doMathOnProp } from './math'
 
-export function mergeFootPrintCandles(candles: FootPrintCandle[]): FootPrintCandle {
+function omitId(candle: FootPrintCandle): Omit<FootPrintCandle, 'id'> {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { id, ...rest } = candle
+  return rest
+}
+
+function createClosedCandle(candle: Omit<FootPrintCandle, 'id'>, interval: string): IFootPrintClosedCandle {
+  return {
+    ...candle,
+    uuid: crypto.randomUUID(),
+    interval,
+    openTime: candle.openTime.toISOString(),
+    closeTime: candle.closeTime.toISOString(),
+    isClosed: true,
+    didPersistToStore: false
+  }
+}
+
+export function mergeFootPrintCandles(candles: FootPrintCandle[], interval: string): IFootPrintClosedCandle {
   if (!candles.length) {
     throw new Error('no candles!')
   }
 
-  if (candles.length === 1) {
-    return candles[0]
+  const [firstCandle, ...otherCandles] = candles
+  const baseCandle = omitId(firstCandle)
+
+  if (otherCandles.length === 0) {
+    return createClosedCandle(baseCandle, interval)
   }
 
-  const [firstCandle, ...otherCandles] = candles
-  const aggrCandle: FootPrintCandle = {
-    ...structuredClone(firstCandle)
-  }
+  const aggrCandle: Omit<FootPrintCandle, 'id'> = structuredClone(baseCandle)
 
   for (const candle of otherCandles) {
-    const openDts = [new Date(aggrCandle.openTime), new Date(candle.openTime)]
-    const closeDts = [new Date(aggrCandle.closeTime), new Date(candle.closeTime)]
+    aggrCandle.openTime = getOldestDate([aggrCandle.openTime, candle.openTime])
+    aggrCandle.closeTime = getNewestDate([aggrCandle.closeTime, candle.closeTime])
 
-    aggrCandle.openTime = getOldestDate(openDts)
-    aggrCandle.closeTime = getNewestDate(closeDts)
-
-    aggrCandle.volumeDelta = doMathOnProp(aggrCandle, candle, 'volumeDelta', '+')
-    aggrCandle.volume = doMathOnProp(aggrCandle, candle, 'volume', '+')
-
-    aggrCandle.aggressiveBid = doMathOnProp(aggrCandle, candle, 'aggressiveBid', '+')
-    aggrCandle.aggressiveAsk = doMathOnProp(aggrCandle, candle, 'aggressiveAsk', '+')
-
-    const imbalancePercent =
-      (aggrCandle.aggressiveBid / (aggrCandle.aggressiveBid + aggrCandle.aggressiveAsk)) * 100
-    aggrCandle.bidImbalancePercent = +imbalancePercent.toFixed(2)
-
-    aggrCandle.high = doMathOnProp(aggrCandle, candle, 'high', 'max')
-    aggrCandle.low = doMathOnProp(aggrCandle, candle, 'low', 'min')
-    aggrCandle.close = candle.close
-
-    aggrCandle.priceLevels = mergePriceLevels(aggrCandle.priceLevels, candle.priceLevels)
+    aggregateCandleProperties(aggrCandle, candle)
   }
 
-  return aggrCandle
+  return {
+    ...aggrCandle,
+    uuid: crypto.randomUUID(),
+    interval,
+    openTime: aggrCandle.openTime.toISOString(),
+    closeTime: aggrCandle.closeTime.toISOString(),
+    isClosed: true,
+    didPersistToStore: false
+  }
+}
+
+function aggregateCandleProperties(aggrCandle: Omit<FootPrintCandle, 'id'>, candle: FootPrintCandle): void {
+  const openDts = [new Date(aggrCandle.openTime), new Date(candle.openTime)]
+  const closeDts = [new Date(aggrCandle.closeTime), new Date(candle.closeTime)]
+
+  aggrCandle.openTime = getOldestDate(openDts)
+  aggrCandle.closeTime = getNewestDate(closeDts)
+
+  aggrCandle.volumeDelta = doMathOnProp(aggrCandle, candle, 'volumeDelta', '+')
+  aggrCandle.volume = doMathOnProp(aggrCandle, candle, 'volume', '+')
+
+  aggrCandle.aggressiveBid = doMathOnProp(aggrCandle, candle, 'aggressiveBid', '+')
+  aggrCandle.aggressiveAsk = doMathOnProp(aggrCandle, candle, 'aggressiveAsk', '+')
+
+  const imbalancePercent = (aggrCandle.aggressiveBid / (aggrCandle.aggressiveBid + aggrCandle.aggressiveAsk)) * 100
+  aggrCandle.bidImbalancePercent = +imbalancePercent.toFixed(2)
+
+  aggrCandle.high = doMathOnProp(aggrCandle, candle, 'high', 'max')
+  aggrCandle.low = doMathOnProp(aggrCandle, candle, 'low', 'min')
+  aggrCandle.close = candle.close
+
+  aggrCandle.priceLevels = mergePriceLevels(aggrCandle.priceLevels, candle.priceLevels)
 }
 
 /**

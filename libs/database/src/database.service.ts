@@ -17,7 +17,7 @@ export class DatabaseService {
     private footprintCandleRepository: Repository<FootPrintCandle>
   ) {}
 
-  async batchSaveFootPrintCandles(candles: IFootPrintClosedCandle[] | FootPrintCandle[]): Promise<string[]> {
+  async batchSaveFootPrintCandles(candles: IFootPrintClosedCandle[]): Promise<string[]> {
     try {
       // Clone and clean each candle before saving
       const cleanedCandles = candles.map((candle) => {
