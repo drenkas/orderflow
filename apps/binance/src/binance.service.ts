@@ -3,6 +3,7 @@ import { Cron, CronExpression } from '@nestjs/schedule'
 import { aggregationIntervalMap } from '@api/constants'
 import { DatabaseService } from '@database/database.service'
 import { IFootPrintClosedCandle } from '@orderflow/dto/orderflow.dto'
+import { alignsWithTargetInterval } from '@orderflow/utils/date'
 import { isMultipleOf } from '@orderflow/utils/math'
 import { OrderFlowAggregator } from '@orderflow/utils/orderFlowAggregator'
 import { mergeFootPrintCandles } from '@orderflow/utils/orderFlowUtil'
@@ -170,17 +171,17 @@ export class BinanceService {
 
     if (candles.length > 0) {
       const aggregatedCandles: IFootPrintClosedCandle[] = []
-      const intervalDurationMs: number = KlineIntervalMs[targetInterval]
 
-      // Use the first candle's open time as the reference for alignment
-      const firstCandleTimeMs = candles[0].openTimeMs
-      const alignmentOffsetMs = firstCandleTimeMs % intervalDurationMs
-      const alignedStartTimeMs = firstCandleTimeMs - alignmentOffsetMs
+      // Find the first candle that aligns with the target interval
+      const startIndex = candles.findIndex((candle) => alignsWithTargetInterval(targetInterval, new Date(candle.openTimeMs)))
 
-      // Iterate over candles starting from the first candle, aligning to the calculated start time
-      let startIndex = candles.findIndex((candle) => candle.openTimeMs >= alignedStartTimeMs)
-      startIndex = startIndex !== -1 ? startIndex : 0
+      // Ensure startIndex is valid and adjust if necessary
+      if (startIndex === -1) {
+        // If no candle aligns with the interval, exit the function or handle as needed
+        return
+      }
 
+      // Iterate over candles from the aligned start index, aggregating them into the target interval
       for (let i = startIndex; i < candles.length; i += count) {
         if (i + count <= candles.length) {
           const candleSubset = candles.slice(i, i + count)
@@ -196,6 +197,9 @@ export class BinanceService {
       }
     }
   }
+
+  // Ensure mergeFootPrintCandles function exists and correctly aggregates the candleSubset into a single candle
+  // Ensure alignsWithTargetInterval function is correctly implemented as shown previously
 
   private processNewTrades(symbol: string, isBuyerMaker: boolean, positionSize: numberInString, price: numberInString) {
     if (!this.didFinishConnectingWS) {

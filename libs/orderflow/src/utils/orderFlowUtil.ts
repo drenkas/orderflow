@@ -2,9 +2,7 @@ import { descendingOrder, mergeDedupeArrays } from './array'
 import { getNewestDate, getOldestDate } from './date'
 import { doMathOnProp } from './math'
 import { IFootPrintClosedCandle, IPriceLevelsClosed } from '../dto/orderflow.dto'
-import { smallerIntervalMap } from '@api/constants'
 import { FootPrintCandle } from '@database/entity/footprint_candle.entity'
-import { INTERVALS } from '@tsquant/exchangeapi/dist/lib/constants/candles'
 
 function omitId(candle: FootPrintCandle): Omit<FootPrintCandle, 'id'> {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
