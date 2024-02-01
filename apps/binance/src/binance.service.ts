@@ -1,11 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { Cron, CronExpression } from '@nestjs/schedule'
-import { intervalMap } from '@api/constants'
+import { aggregationIntervalMap } from '@api/constants'
 import { DatabaseService } from '@database/database.service'
+import { IFootPrintClosedCandle } from '@orderflow/dto/orderflow.dto'
 import { isMultipleOf } from '@orderflow/utils/math'
 import { OrderFlowAggregator } from '@orderflow/utils/orderFlowAggregator'
 import { mergeFootPrintCandles } from '@orderflow/utils/orderFlowUtil'
-import { Exchange, KlineIntervalMs } from '@tsquant/exchangeapi/dist/lib/constants'
+import { CACHE_LIMIT, Exchange, KlineIntervalMs } from '@tsquant/exchangeapi/dist/lib/constants'
 import { INTERVALS } from '@tsquant/exchangeapi/dist/lib/constants/candles'
 import { LastStoredSymbolIntervalTimestampsDictionary } from '@tsquant/exchangeapi/dist/lib/types/candles.types'
 import { BinanceWebSocketService } from 'apps/binance/src/BinanceWebsocketService'
@@ -88,7 +89,7 @@ export class BinanceService {
         throw new Error(`Unknown ms per interval "${interval}"`)
       }
 
-      const maxRowsInMemory = 600
+      const maxRowsInMemory = CACHE_LIMIT
       this.aggregators[symbol] = new OrderFlowAggregator('binance', symbol, interval, intervalSizeMs, {
         maxCacheInMemory: maxRowsInMemory
       })
@@ -105,10 +106,9 @@ export class BinanceService {
         aggr.processCandleClosed()
         await this.persistCandlesToStorage(symbol, this.BASE_INTERVAL)
 
-        const closeDate = new Date()
-        closeDate.setMinutes(closeDate.getMinutes() + 1, 0, 0)
-        const closeMinute: number = closeDate.getMinutes()
-        const closeTimeMS: number = closeDate.getTime()
+        const aggregationEnd = new Date()
+        aggregationEnd.setMinutes(aggregationEnd.getMinutes() + 1, 0, 0)
+        const closeMinute: number = aggregationEnd.getMinutes()
         const isCloseMinuteMultipleOfFive: boolean = isMinuteMultipleOfFive(closeMinute)
 
         if (isCloseMinuteMultipleOfFive) {
@@ -116,8 +116,17 @@ export class BinanceService {
             await this.updateLastTimestamps(symbol, interval)
             const lastTimestamp = this.lastTimestamps[symbol][interval]
 
-            if (lastTimestamp && closeTimeMS === lastTimestamp + KlineIntervalMs[interval]) {
-              await this.processLargerInterval(symbol, interval, closeDate, lastTimestamp)
+            // When this candle closes and when the next one in this interval is expected
+            const closeTimeMS: number = aggregationEnd.getTime()
+            const nextOpenTimeMS: number = lastTimestamp + KlineIntervalMs[interval]
+
+            if (lastTimestamp && closeTimeMS === nextOpenTimeMS) {
+              const aggregationStart = new Date(lastTimestamp)
+              // Candles already exist in this interval
+              await this.buildAggregatedCandle(symbol, interval, aggregationEnd, aggregationStart)
+            } else if (!lastTimestamp) {
+              // No timestamp for this interval exists means no aggregation has been performed on lower level intervals
+              await this.buildAggregatedCandles(symbol, interval)
             }
           }
         }
@@ -143,16 +152,47 @@ export class BinanceService {
     }
   }
 
-  async processLargerInterval(symbol: string, interval: INTERVALS, closeDate: Date, lastTimestamp: number) {
-    const candleStartDate = new Date(lastTimestamp)
+  async buildAggregatedCandle(symbol: string, targetInterval: INTERVALS, aggregationEnd?: Date, aggregationStart?: Date) {
+    const { baseInterval, count } = aggregationIntervalMap[targetInterval]
+    const candles = await this.databaseService.getCandles(Exchange.BINANCE, symbol, baseInterval, aggregationStart, aggregationEnd)
 
-    const candles = await this.databaseService.getCandles(Exchange.BINANCE, symbol, interval, candleStartDate, closeDate)
-    const requiredCandlesLength: number = intervalMap[interval]
+    if (candles?.length === count) {
+      const aggregatedCandle = mergeFootPrintCandles(candles, targetInterval)
+      if (aggregatedCandle) {
+        await this.databaseService.batchSaveFootPrintCandles([aggregatedCandle])
+      }
+    }
+  }
 
-    if (candles?.length === requiredCandlesLength) {
-      const newCandle = mergeFootPrintCandles(candles, interval)
-      if (newCandle) {
-        await this.databaseService.batchSaveFootPrintCandles([newCandle])
+  async buildAggregatedCandles(symbol: string, targetInterval: INTERVALS) {
+    const { baseInterval, count } = aggregationIntervalMap[targetInterval]
+    const candles = await this.databaseService.getCandles(Exchange.BINANCE, symbol, baseInterval)
+
+    if (candles.length > 0) {
+      const aggregatedCandles: IFootPrintClosedCandle[] = []
+      const intervalDurationMs: number = KlineIntervalMs[targetInterval]
+
+      // Use the first candle's open time as the reference for alignment
+      const firstCandleTimeMs = candles[0].openTimeMs
+      const alignmentOffsetMs = firstCandleTimeMs % intervalDurationMs
+      const alignedStartTimeMs = firstCandleTimeMs - alignmentOffsetMs
+
+      // Iterate over candles starting from the first candle, aligning to the calculated start time
+      let startIndex = candles.findIndex((candle) => candle.openTimeMs >= alignedStartTimeMs)
+      startIndex = startIndex !== -1 ? startIndex : 0
+
+      for (let i = startIndex; i < candles.length; i += count) {
+        if (i + count <= candles.length) {
+          const candleSubset = candles.slice(i, i + count)
+          const aggregatedCandle = mergeFootPrintCandles(candleSubset, targetInterval)
+          if (aggregatedCandle) {
+            aggregatedCandles.push(aggregatedCandle)
+          }
+        }
+      }
+
+      if (aggregatedCandles.length > 0) {
+        await this.databaseService.batchSaveFootPrintCandles(aggregatedCandles)
       }
     }
   }

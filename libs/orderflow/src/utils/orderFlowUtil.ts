@@ -1,8 +1,10 @@
-import { FootPrintCandle } from '@database/entity/footprint_candle.entity'
-import { IFootPrintClosedCandle, IPriceLevelsClosed } from '../dto/orderflow.dto'
-import { mergeDedupeArrays, descendingOrder } from './array'
-import { getOldestDate, getNewestDate } from './date'
+import { descendingOrder, mergeDedupeArrays } from './array'
+import { getNewestDate, getOldestDate } from './date'
 import { doMathOnProp } from './math'
+import { IFootPrintClosedCandle, IPriceLevelsClosed } from '../dto/orderflow.dto'
+import { smallerIntervalMap } from '@api/constants'
+import { FootPrintCandle } from '@database/entity/footprint_candle.entity'
+import { INTERVALS } from '@tsquant/exchangeapi/dist/lib/constants/candles'
 
 function omitId(candle: FootPrintCandle): Omit<FootPrintCandle, 'id'> {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -36,12 +38,7 @@ export function mergeFootPrintCandles(candles: FootPrintCandle[], interval: stri
 
   const aggrCandle: Omit<FootPrintCandle, 'id'> = structuredClone(baseCandle)
 
-  for (const candle of otherCandles) {
-    aggrCandle.openTime = getOldestDate([aggrCandle.openTime, candle.openTime])
-    aggrCandle.closeTime = getNewestDate([aggrCandle.closeTime, candle.closeTime])
-
-    aggregateCandleProperties(aggrCandle, candle)
-  }
+  for (const candle of otherCandles) aggregateCandleProperties(aggrCandle, candle)
 
   return {
     ...aggrCandle,
