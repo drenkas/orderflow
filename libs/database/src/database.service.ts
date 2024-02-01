@@ -2,10 +2,9 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
 import { LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm'
-import { intervalMap } from '@api/constants'
 import { FootPrintCandle } from '@database/entity/footprint_candle.entity'
-import { CACHE_LIMIT } from '@orderflow/constants'
 import { IFootPrintClosedCandle } from '@orderflow/dto/orderflow.dto'
+import { CACHE_LIMIT } from '@tsquant/exchangeapi/dist/lib/constants/exchange'
 import { LastStoredSymbolIntervalTimestampsDictionary } from '@tsquant/exchangeapi/dist/lib/types'
 
 @Injectable()
