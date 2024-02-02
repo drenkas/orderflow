@@ -1,12 +1,10 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { Injectable, Logger } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
-import { Repository } from 'typeorm'
-import { intervalMap } from '@api/constants'
+import { LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm'
 import { FootPrintCandle } from '@database/entity/footprint_candle.entity'
-import { CACHE_LIMIT } from '@orderflow/constants'
-import { IFootPrintCandle } from '@orderflow/dto/orderflow.dto'
-import { EXCHANGE_DATA_TYPES } from '@tsquant/exchangeapi/dist/lib/constants'
+import { IFootPrintClosedCandle } from '@orderflow/dto/orderflow.dto'
+import { CACHE_LIMIT } from '@tsquant/exchangeapi/dist/lib/constants/exchange'
 import { LastStoredSymbolIntervalTimestampsDictionary } from '@tsquant/exchangeapi/dist/lib/types'
 
 @Injectable()
@@ -18,7 +16,7 @@ export class DatabaseService {
     private footprintCandleRepository: Repository<FootPrintCandle>
   ) {}
 
-  async batchSaveFootPrintCandles(candles: IFootPrintCandle[]): Promise<string[]> {
+  async batchSaveFootPrintCandles(candles: IFootPrintClosedCandle[]): Promise<string[]> {
     try {
       // Clone and clean each candle before saving
       const cleanedCandles = candles.map((candle) => {
@@ -47,7 +45,7 @@ export class DatabaseService {
     }
   }
 
-  async getTestCandles(): Promise<any[]> {
+  async getTestCandles(): Promise<FootPrintCandle[]> {
     const query = this.footprintCandleRepository.createQueryBuilder('candle').select('*').where('candle.id IN (1,2,3,4)')
 
     try {
@@ -58,32 +56,26 @@ export class DatabaseService {
     }
   }
 
-  async getCandles(exchange: string, symbol: string, interval: string): Promise<any[]> {
-    const intervalMinutes = intervalMap[interval]
-    const groupingColumn = `DATE_TRUNC('minute', timestamp) - INTERVAL '1 minute' * (EXTRACT(MINUTE FROM timestamp) % ${intervalMinutes})`
-
-    const query = this.footprintCandleRepository
-      .createQueryBuilder('candle')
-      .select([
-        `MIN(candle.timestamp) as timestamp`,
-        `MAX(candle.high) as high`,
-        `MIN(candle.low) as low`,
-        `SUM(candle.delta) as delta`,
-        `SUM(candle.volume) as volume`,
-        `candle.symbol as symbol`,
-        `candle.exchange as exchange`,
-        `SUM(candle.aggressiveBid) as "aggressiveBid"`,
-        `SUM(candle.aggressiveAsk) as "aggressiveAsk"`
-        // TODO: Aggregate bid and ask columns
-      ])
-      .where('candle.exchange = :exchange', { exchange })
-      .andWhere('candle.symbol = :symbol', { symbol })
-      .groupBy(groupingColumn)
-      .addGroupBy('candle.symbol')
-      .addGroupBy('candle.exchange')
-      .orderBy('timestamp', 'ASC')
+  async getCandles(exchange: string, symbol: string, interval: string, openTime?: Date, closeTime?: Date): Promise<FootPrintCandle[]> {
     try {
-      return await query.getRawMany()
+      const whereConditions = {
+        exchange,
+        symbol,
+        interval
+      }
+
+      if (openTime) {
+        whereConditions['openTime'] = MoreThanOrEqual(openTime)
+      }
+
+      if (closeTime) {
+        whereConditions['closeTime'] = LessThanOrEqual(closeTime)
+      }
+
+      return await this.footprintCandleRepository.find({
+        where: whereConditions,
+        order: { openTime: 'ASC' }
+      })
     } catch (error) {
       console.error('Error fetching aggregated candles:', error)
       throw error

@@ -1,16 +1,4 @@
-export enum INTERVALS {
-  FIVE_MINUTES = '5m',
-  FIFTEEN_MINUTES = '15m',
-  THIRTY_MINUTES = '30m',
-  ONE_HOUR = '1h',
-  TWO_HOURS = '2h',
-  THREE_HOURS = '3h',
-  FOUR_HOURS = '4h',
-  SIX_HOURS = '6h',
-  EIGHT_HOURS = '8h',
-  TWELVE_HOURS = '12h',
-  ONE_DAY = '1d'
-}
+import { INTERVALS } from '@tsquant/exchangeapi/dist/lib/constants/candles'
 
 export const intervalMap = Object.freeze({
   '5m': 5,
@@ -24,4 +12,18 @@ export const intervalMap = Object.freeze({
   '8h': 480,
   '12h': 720,
   '1d': 1440
+})
+
+export const aggregationIntervalMap = Object.freeze({
+  [INTERVALS.FIVE_MINUTES]: { baseInterval: INTERVALS.ONE_MINUTE, count: 1 },
+  [INTERVALS.FIFTEEN_MINUTES]: { baseInterval: INTERVALS.FIVE_MINUTES, count: 3 },
+  [INTERVALS.THIRTY_MINUTES]: { baseInterval: INTERVALS.FIFTEEN_MINUTES, count: 2 },
+  [INTERVALS.ONE_HOUR]: { baseInterval: INTERVALS.THIRTY_MINUTES, count: 2 },
+  [INTERVALS.TWO_HOURS]: { baseInterval: INTERVALS.ONE_HOUR, count: 2 },
+  [INTERVALS.FOUR_HOURS]: { baseInterval: INTERVALS.ONE_HOUR, count: 4 },
+  [INTERVALS.EIGHT_HOURS]: { baseInterval: INTERVALS.ONE_HOUR, count: 8 },
+  [INTERVALS.TWELVE_HOURS]: { baseInterval: INTERVALS.ONE_HOUR, count: 12 },
+  [INTERVALS.ONE_DAY]: { baseInterval: INTERVALS.ONE_HOUR, count: 2 },
+  [INTERVALS.ONE_WEEK]: { baseInterval: INTERVALS.ONE_DAY, count: 7 },
+  [INTERVALS.ONE_MONTH]: { baseInterval: INTERVALS.ONE_WEEK, count: 4 }
 })

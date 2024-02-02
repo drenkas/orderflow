@@ -1,6 +1,7 @@
-import * as crypto from 'crypto'
-import { IFootPrintCandle, IFootPrintClosedCandle, IPriceLevelClosed } from '../dto/orderflow.dto'
 import { getStartOfMinute } from './date'
+import { IFootPrintCandle, IFootPrintClosedCandle, IPriceLevelClosed } from '../dto/orderflow.dto'
+import { CACHE_LIMIT } from '@tsquant/exchangeapi/dist/lib/constants'
+import * as crypto from 'crypto'
 
 export interface OrderFlowAggregatorConfig {
   // Define per-level price precision used to group trades by level
@@ -37,7 +38,7 @@ export class OrderFlowAggregator {
     this.intervalSizeMs = intervalSizeMs
 
     this.config = {
-      maxCacheInMemory: 600,
+      maxCacheInMemory: CACHE_LIMIT,
       ...config
     }
   }

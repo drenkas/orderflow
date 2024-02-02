@@ -26,3 +26,9 @@ export function doMathOnProp<TLeftObj, TRightObj extends TLeftObj>(
     }
   }
 }
+
+export function isMultipleOf(divisor: number) {
+  return (number: number): boolean => {
+    return number % divisor === 0
+  }
+}
