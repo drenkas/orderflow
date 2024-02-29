@@ -54,6 +54,15 @@
       "compilerOptions": {
         "tsConfigPath": "libs/@/orderflow/tsconfig.lib.json"
       }
+    },
+    "binance-backfill": {
+      "type": "application",
+      "root": "apps/binance-backfill",
+      "entryFile": "main",
+      "sourceRoot": "apps/binance-backfill/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/binance-backfill/tsconfig.app.json"
+      }
     }
   }
 }

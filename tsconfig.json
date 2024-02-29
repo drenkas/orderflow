@@ -18,12 +18,24 @@
     "forceConsistentCasingInFileNames": false,
     "noFallthroughCasesInSwitch": false,
     "paths": {
-      "@api": ["apps/api/src"],
-      "@api/*": ["apps/api/src/*"],
-      "@database": ["libs/database/src"],
-      "@database/*": ["libs/database/src/*"],
-      "@orderflow": ["libs/orderflow/src"],
-      "@orderflow/*": ["libs/orderflow/src/*"]
+      "@api": [
+        "apps/api/src"
+      ],
+      "@api/*": [
+        "apps/api/src/*"
+      ],
+      "@database": [
+        "libs/database/src"
+      ],
+      "@database/*": [
+        "libs/database/src/*"
+      ],
+      "@orderflow": [
+        "libs/orderflow/src"
+      ],
+      "@orderflow/*": [
+        "libs/orderflow/src/*"
+      ]
     }
   }
 }

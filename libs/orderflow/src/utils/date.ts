@@ -33,6 +33,22 @@ export function getNewestDate(arrayOfDates: Date[]): Date {
   return arrayOfDates.reduce((c, n) => (n > c ? n : c))
 }
 
+export function calculateStartDate(startAt: string) {
+  const regex = /(\d+Y)?(\d+M)?/
+  const [, years, months] = startAt.match(regex) || []
+
+  const date = new Date()
+  if (years) {
+    date.setFullYear(date.getFullYear() - parseInt(years, 10))
+  }
+  if (months) {
+    date.setMonth(date.getMonth() - parseInt(months, 10))
+  }
+  date.setDate(1) // Set to the first day of the calculated month
+
+  return date
+}
+
 export const alignsWithTargetInterval = (targetInterval: INTERVALS, date: Date) => {
   const hours = date.getHours()
   const minutes = date.getMinutes()
