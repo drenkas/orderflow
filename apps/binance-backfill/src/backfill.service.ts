@@ -13,10 +13,12 @@ import { CACHE_LIMIT, Exchange, INTERVALS, KlineIntervalMs } from '@tsquant/exch
 @Injectable()
 export class BackfillService {
   private readonly baseUrl = 'https://data.binance.vision/?prefix=data/futures/um/daily/aggTrades'
+  private readonly BASE_SYMBOL = 'BTCUSDT'
   private readonly BASE_INTERVAL = INTERVALS.ONE_MINUTE
   private currTestTime: Date = new Date()
+  private nextCandleTime: Date = new Date()
 
-  protected symbols: string[] = process.env.SYMBOLS ? process.env.SYMBOLS.split(',') : ['BTCUSDT']
+  protected symbols: string[] = process.env.SYMBOLS ? process.env.SYMBOLS.split(',') : [this.BASE_SYMBOL]
 
   private logger: Logger = new Logger(BackfillService.name)
 
@@ -41,34 +43,52 @@ export class BackfillService {
   async onModuleInit() {
     this.logger.log('start backfilling')
 
-    const symbol: string = this.symbols[0]
     const maxRowsInMemory = CACHE_LIMIT
-    Object.keys(this.candles).forEach((interval: INTERVALS) => {
-      const intervalSizeMs: number = KlineIntervalMs[interval]
-      this.aggregators[symbol] = new OrderFlowAggregator(Exchange.BINANCE, symbol, interval, intervalSizeMs, {
-        maxCacheInMemory: maxRowsInMemory
-      })
+    const intervalSizeMs: number = KlineIntervalMs[INTERVALS.ONE_MINUTE]
+    this.aggregators[this.BASE_SYMBOL] = new OrderFlowAggregator(Exchange.BINANCE, this.BASE_SYMBOL, INTERVALS.ONE_MINUTE, intervalSizeMs, {
+      maxCacheInMemory: maxRowsInMemory
     })
 
-    await this.downloadAndProcessCsvFiles(symbol)
+    await this.downloadAndProcessCsvFiles()
     // await this.saveData(symbol)
 
     await this.app.close()
   }
 
   private async triggerCandleClose(): Promise<void> {
-    //
+    this.aggregators[this.BASE_SYMBOL].processCandleClosed()
+    await this.persistCandlesToStorage()
   }
 
-  private async downloadAndProcessCsvFiles(symbol: string) {
-    const backfillStartAt: string = process.env.BACKFILL_START_AT as string
-    const startDate = calculateStartDate(backfillStartAt)
-    const currentDate = new Date(startDate)
-    this.currTestTime = new Date(startDate)
+  private async persistCandlesToStorage() {
+    const queuedCandles = this.aggregators[this.BASE_SYMBOL].getQueuedCandles()
+    if (queuedCandles.length <= 500) {
+      return
+    }
 
-    while (currentDate <= new Date()) {
+    this.logger.log(
+      'Saving batch of candles',
+      queuedCandles.map((c) => c.uuid)
+    )
+
+    const savedUUIDs = await this.databaseService.batchSaveFootPrintCandles([...queuedCandles])
+
+    // Filter out successfully saved candles
+    this.aggregators[this.BASE_SYMBOL].markSavedCandles(savedUUIDs)
+    this.aggregators[this.BASE_SYMBOL].pruneCandleQueue()
+  }
+
+  private async downloadAndProcessCsvFiles() {
+    const backfillStartAt: string = process.env.BACKFILL_START_AT as string
+    const startDate = new Date(new Date(calculateStartDate(backfillStartAt).setHours(0, 0, 0, 0))) // Start of period at 00:00
+    const endDate = new Date(new Date(new Date().setDate(new Date().getDate() - 1)).setHours(0, 0, 0, 0)) // Start of previous day at 00:00
+    let currentDate = new Date(startDate)
+    this.currTestTime = new Date(startDate)
+    this.nextCandleTime = new Date(this.currTestTime.getTime() + 60000)
+
+    while (currentDate <= endDate) {
       const dateString = currentDate.toISOString().split('T')[0]
-      const fileUrl = `${this.baseUrl}/${symbol}/${symbol}-metrics-${dateString}.zip`
+      const fileUrl = `${this.baseUrl}/${this.BASE_SYMBOL}/${this.BASE_SYMBOL}-metrics-${dateString}.zip`
 
       try {
         const response: any = await firstValueFrom(
@@ -86,32 +106,26 @@ export class BackfillService {
           skip_empty_lines: true
         })
 
-        trades.forEach((trade: IAggregatedTrade) => {
-          // Convert transactTime to a Date object
+        for (let i = 0; i < trades.length; i++) {
+          const trade: IAggregatedTrade = trades[i]
           const tradeTime = new Date(trade.transactTime)
 
-          // Check if the tradeTime is in the next minute or later compared to currTestTime
-          if (tradeTime >= new Date(this.currTestTime.getTime() + 60000)) {
-            // Find the start of the minute for the trade time
-            const newCurrTestTime = new Date(tradeTime)
-            newCurrTestTime.setSeconds(0, 0) // Set seconds and milliseconds to 0 to get the start of the minute
+          if (tradeTime >= this.nextCandleTime) {
+            this.currTestTime = new Date(this.nextCandleTime)
+            this.nextCandleTime = new Date(this.nextCandleTime.getTime() + 60000)
 
-            // Update currTestTime to the start of the new minute
-            this.currTestTime = newCurrTestTime
-
-            // Call the method for closing the candle
-            this.triggerCandleClose()
+            await this.triggerCandleClose()
+          } else {
+            this.aggregators[this.BASE_SYMBOL].processNewTrades(trade.isBuyerMaker, Number(trade.quantity), Number(trade.price))
           }
-
-          // Process the trade as needed
-        })
+        }
 
         console.log(`Downloaded and parsed file for ${dateString}`)
       } catch (error) {
         console.error(`Failed to download or process the file for ${dateString}:`, error)
       }
 
-      currentDate.setDate(currentDate.getDate() + 1)
+      currentDate = new Date(currentDate.setDate(currentDate.getDate() + 1))
     }
   }
 }
