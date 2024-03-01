@@ -1,10 +1,17 @@
 import { NestFactory } from '@nestjs/core'
 import { BinanceBackfillModule } from './backfill.module'
+import { Logger } from '@nestjs/common'
+import { validateEnvironment } from '@orderflow/utils/validation'
 
 async function bootstrap() {
-  const app = await NestFactory.create(BinanceBackfillModule)
+  if (!validateEnvironment()) {
+    Logger.error('Environment validation failed. Exiting application.', 'Startup')
+    process.exit(1)
+  }
 
   setupExceptionCatchers()
+
+  const app = await NestFactory.create(BinanceBackfillModule)
   await app.listen(3000)
 }
 
