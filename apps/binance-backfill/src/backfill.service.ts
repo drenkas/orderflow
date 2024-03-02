@@ -78,15 +78,18 @@ export class BackfillService {
 
   private async downloadAndProcessCsvFiles() {
     const backfillStartAt: string = process.env.BACKFILL_START_AT as string
+    const backfillEndAt: string = process.env.BACKFILL_END_AT as string
 
-    const startDate = new Date(new Date(calculateStartDate(backfillStartAt).setHours(0, 0, 0, 0))) // Start of period at 00:00
-    const endDate = new Date(new Date(new Date().setDate(new Date().getDate() - 1)).setHours(0, 0, 0, 0)) // Start of previous day at 00:00
+    const startDate = calculateStartDate(backfillStartAt)
+    const endDate = calculateStartDate(backfillEndAt)
     let currentDate = new Date(startDate)
 
     this.currTestTime = new Date(startDate)
     this.nextCandleTime = new Date(this.currTestTime.getTime() + 60000)
     this.aggregators[this.BASE_SYMBOL].setCurrMinute(this.currTestTime)
 
+    console.log({ startDate })
+    console.log({ endDate })
     console.log({ currTestTime: this.currTestTime })
     console.log({ nextCandleTime: this.nextCandleTime })
 
@@ -134,9 +137,6 @@ export class BackfillService {
             const quantity: number = Number(trade.quantity)
             const price: number = Number(trade.price)
             this.aggregators[this.BASE_SYMBOL].processNewTrades(isBuyerMaker, quantity, price)
-          }
-          if (i === 0 || i === trades.length - 1) {
-            console.log(this.currTestTime)
           }
         }
         console.timeEnd(`reading trades`)

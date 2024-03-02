@@ -34,17 +34,11 @@ export function getNewestDate(arrayOfDates: Date[]): Date {
 }
 
 export function calculateStartDate(startAt: string) {
-  const regex = /(\d+Y)?(\d+M)?/
-  const [, years, months] = startAt.match(regex) || []
+  // Convert the startAt string to a number and then to a Date object
+  const timestamp = Number(startAt)
+  const date = new Date(timestamp)
 
-  const date = new Date()
-  if (years) {
-    date.setFullYear(date.getFullYear() - parseInt(years, 10))
-  }
-  if (months) {
-    date.setMonth(date.getMonth() - parseInt(months, 10))
-  }
-  date.setDate(1) // Set to the first day of the calculated month
+  date.setHours(0, 0, 0, 0) // Start of day at 00:00
 
   return date
 }
