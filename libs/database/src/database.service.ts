@@ -2,7 +2,7 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
 import { LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm'
-import { FootPrintCandle } from '@database/entity/footprint_candle.entity'
+import { CandleUniqueColumns, FootPrintCandle } from '@database/entity/footprint_candle.entity'
 import { IFootPrintClosedCandle } from '@orderflow/dto/orderflow.dto'
 import { CACHE_LIMIT } from '@tsquant/exchangeapi/dist/lib/constants/exchange'
 import { LastStoredSymbolIntervalTimestampsDictionary } from '@tsquant/exchangeapi/dist/lib/types'
@@ -32,7 +32,11 @@ export class DatabaseService {
 
       // console.log(`saving data: `, JSON.stringify({ levels, cleanedCandles }, null, 2))
 
-      await this.footprintCandleRepository.save(cleanedCandles)
+      await this.footprintCandleRepository.upsert(cleanedCandles, {
+        conflictPaths: CandleUniqueColumns,
+        upsertType: 'on-conflict-do-update',
+        skipUpdateIfNoValuesChanged: true
+      })
 
       // Return the ids of successfully saved candles
       const saved = candles.map((candle) => candle.uuid)
@@ -41,7 +45,7 @@ export class DatabaseService {
       return saved
     } catch (error) {
       console.error('Error bulk inserting FootPrintCandles:', error)
-      return [] // Returning an empty array or handle differently based on your application's needs
+      return []
     }
   }
 

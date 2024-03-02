@@ -3,10 +3,10 @@
 import { Entity, PrimaryGeneratedColumn, Column, Index } from 'typeorm'
 import { IPriceLevelClosed } from '../../../orderflow/src/dto/orderflow.dto'
 
-export const KlineUniqueColumns = ['exchange', 'symbol', 'interval', 'openTime', 'closeTime', 'openTimeMs', 'closeTimeMs']
+export const CandleUniqueColumns = ['exchange', 'symbol', 'interval', 'openTime']
 
 @Entity({ name: 'footprint_candle' })
-@Index(KlineUniqueColumns, { unique: true })
+@Index(CandleUniqueColumns, { unique: true })
 export class FootPrintCandle {
   @PrimaryGeneratedColumn()
   id: number

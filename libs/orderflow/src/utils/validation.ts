@@ -39,6 +39,7 @@ export function validateEnvironment() {
     return false
   } else if (backfillEndAt > yesterday.getTime()) {
     Logger.error(
+      // eslint-disable-next-line max-len
       `BACKFILL_END_AT must be less than or equal to yesterday to align with the last available data file in aggTrades (e.g., BTCUSDT-aggTrades-2024-03-01.zip for yesterday's data). Current value: ${
         new Date(backfillEndAt).toISOString().split('T')[0]
       }`,
