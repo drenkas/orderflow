@@ -1,9 +1,9 @@
 export interface IAggregatedTrade {
-  aggTradeId: number
-  price: number
-  quantity: number
-  firstTradeId: number
-  lastTradeId: number
-  transactTime: number
-  isBuyerMaker: boolean
+  agg_trade_id: string
+  price: string
+  quantity: string
+  first_trade_id: string
+  last_trade_id: string
+  transact_time: string
+  is_buyer_maker: string
 }

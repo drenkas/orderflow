@@ -1,5 +1,5 @@
 import { HttpService } from '@nestjs/axios'
-import { INestApplication, Injectable, Logger } from '@nestjs/common'
+import { Injectable, Logger } from '@nestjs/common'
 import { parse } from 'csv-parse/sync'
 import * as JSZip from 'jszip'
 import { firstValueFrom } from 'rxjs'
@@ -12,7 +12,7 @@ import { CACHE_LIMIT, Exchange, INTERVALS, KlineIntervalMs } from '@tsquant/exch
 
 @Injectable()
 export class BackfillService {
-  private readonly baseUrl = 'https://data.binance.vision/?prefix=data/futures/um/daily/aggTrades'
+  private readonly baseUrl = 'https://data.binance.vision/data/futures/um/daily/aggTrades'
   private readonly BASE_SYMBOL = 'BTCUSDT'
   private readonly BASE_INTERVAL = INTERVALS.ONE_MINUTE
   private currTestTime: Date = new Date()
@@ -38,7 +38,7 @@ export class BackfillService {
     [INTERVALS.ONE_MONTH]: []
   }
 
-  constructor(private readonly app: INestApplication, private readonly databaseService: DatabaseService, private readonly httpService: HttpService) {}
+  constructor(private readonly databaseService: DatabaseService, private readonly httpService: HttpService) {}
 
   async onModuleInit() {
     this.logger.log('start backfilling')
@@ -51,13 +51,11 @@ export class BackfillService {
 
     await this.downloadAndProcessCsvFiles()
     // await this.saveData(symbol)
-
-    await this.app.close()
   }
 
   private async triggerCandleClose(): Promise<void> {
     this.aggregators[this.BASE_SYMBOL].processCandleClosed()
-    await this.persistCandlesToStorage()
+    // await this.persistCandlesToStorage()
   }
 
   private async persistCandlesToStorage() {
@@ -80,47 +78,73 @@ export class BackfillService {
 
   private async downloadAndProcessCsvFiles() {
     const backfillStartAt: string = process.env.BACKFILL_START_AT as string
+
     const startDate = new Date(new Date(calculateStartDate(backfillStartAt).setHours(0, 0, 0, 0))) // Start of period at 00:00
     const endDate = new Date(new Date(new Date().setDate(new Date().getDate() - 1)).setHours(0, 0, 0, 0)) // Start of previous day at 00:00
     let currentDate = new Date(startDate)
+
     this.currTestTime = new Date(startDate)
     this.nextCandleTime = new Date(this.currTestTime.getTime() + 60000)
+    this.aggregators[this.BASE_SYMBOL].setCurrMinute(this.currTestTime)
+
+    console.log({ currTestTime: this.currTestTime })
+    console.log({ nextCandleTime: this.nextCandleTime })
 
     while (currentDate <= endDate) {
       const dateString = currentDate.toISOString().split('T')[0]
-      const fileUrl = `${this.baseUrl}/${this.BASE_SYMBOL}/${this.BASE_SYMBOL}-metrics-${dateString}.zip`
+      const fileUrl = `${this.baseUrl}/${this.BASE_SYMBOL}/${this.BASE_SYMBOL}-aggTrades-${dateString}.zip`
 
       try {
+        console.time(`downloading ${fileUrl}`)
         const response: any = await firstValueFrom(
           this.httpService.get(fileUrl, {
             responseType: 'arraybuffer'
           })
         )
+        console.timeEnd(`downloading ${fileUrl}`)
 
+        console.time(`extracting ${fileUrl}`)
         const zip = await JSZip.loadAsync(response.data)
         const csvFileName: string = Object.keys(zip.files)[0]
         const csvFile: string = await zip.files[csvFileName].async('string')
+        console.timeEnd(`extracting ${fileUrl}`)
 
+        console.time(`parsing ${fileUrl}`)
         const trades = parse(csvFile, {
           columns: true,
           skip_empty_lines: true
         })
+        console.timeEnd(`parsing ${fileUrl}`)
 
+        console.time(`reading trades`)
+        console.log(`trades #${trades.length}`)
         for (let i = 0; i < trades.length; i++) {
           const trade: IAggregatedTrade = trades[i]
-          const tradeTime = new Date(trade.transactTime)
+          const transactTimestamp: number = Number(trade.transact_time)
+          const tradeTime = new Date(transactTimestamp)
 
           if (tradeTime >= this.nextCandleTime) {
             this.currTestTime = new Date(this.nextCandleTime)
-            this.nextCandleTime = new Date(this.nextCandleTime.getTime() + 60000)
+            this.nextCandleTime = new Date(this.nextCandleTime.getTime() + 60 * 1000)
+            this.aggregators[this.BASE_SYMBOL].setCurrMinute(this.currTestTime)
 
             await this.triggerCandleClose()
           } else {
-            this.aggregators[this.BASE_SYMBOL].processNewTrades(trade.isBuyerMaker, Number(trade.quantity), Number(trade.price))
+            const isBuyerMaker: boolean = trade.is_buyer_maker === 'true'
+            const quantity: number = Number(trade.quantity)
+            const price: number = Number(trade.price)
+            this.aggregators[this.BASE_SYMBOL].processNewTrades(isBuyerMaker, quantity, price)
+          }
+          if (i === 0 || i === trades.length - 1) {
+            console.log(this.currTestTime)
           }
         }
+        console.timeEnd(`reading trades`)
+        const cand = this.aggregators[this.BASE_SYMBOL].getAllCandles()
+        console.log(cand?.length)
 
         console.log(`Downloaded and parsed file for ${dateString}`)
+        process.exit(1)
       } catch (error) {
         console.error(`Failed to download or process the file for ${dateString}:`, error)
       }

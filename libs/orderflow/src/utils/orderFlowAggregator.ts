@@ -25,6 +25,9 @@ export class OrderFlowAggregator {
   /** Queue of candles that may not yet have reached the DB yet (closed candles) */
   private candleQueue: IFootPrintClosedCandle[] = []
 
+  /** Used for backtesting in replace of getStartOfMinute()  */
+  private currMinute: Date | null = null
+
   constructor(
     exchange: string,
     symbol: string,
@@ -41,6 +44,10 @@ export class OrderFlowAggregator {
       maxCacheInMemory: CACHE_LIMIT,
       ...config
     }
+  }
+
+  public setCurrMinute(currMinute: Date): void {
+    this.currMinute = currMinute
   }
 
   /** Get only candles that haven't been saved to DB yet */
@@ -127,7 +134,7 @@ export class OrderFlowAggregator {
     symbol: string,
     interval: string,
     intervalSizeMs: number,
-    startDate: Date = getStartOfMinute()
+    startDate: Date = this.currMinute ?? getStartOfMinute()
   ) {
     const closeTimeMs = startDate.getTime() + intervalSizeMs - 1
 

@@ -15,7 +15,7 @@
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:binance": "nest start binance --watch",
-    "start:backfill-backfill": "nest start binance-backfill --watch",
+    "start:binance-backfill": "nest start binance-backfill --watch",
     "start:bybit": "nest start bybit --watch",
     "start:api": "nest start api --watch",
     "start:debug": "nest start --debug --watch",
