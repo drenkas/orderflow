@@ -55,6 +55,10 @@ export class OrderFlowAggregator {
     return this.getAllCandles().filter((candle) => !candle.didPersistToStore)
   }
 
+  public clearCandleQueue(): void {
+    this.candleQueue = []
+  }
+
   /** Get all candles, incl those already saved to DB */
   public getAllCandles(): IFootPrintClosedCandle[] {
     return this.candleQueue

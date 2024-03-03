@@ -16,7 +16,7 @@ import { CACHE_LIMIT, Exchange, INTERVALS, KlineIntervalMs, KlineIntervalTimes }
 @Injectable()
 export class BackfillService {
   private readonly baseUrl = 'https://data.binance.vision/data/futures/um/daily/aggTrades'
-  private exchange: Exchange = Exchange.BINANCE
+  private readonly exchange: Exchange = Exchange.BINANCE
   private readonly BASE_SYMBOL = 'BTCUSDT'
   private readonly BASE_INTERVAL = INTERVALS.ONE_MINUTE
   private currTestTime: Date = new Date()
@@ -54,7 +54,26 @@ export class BackfillService {
     })
 
     await this.downloadAndProcessCsvFiles()
-    // await this.saveData(symbol)
+    await this.saveData()
+  }
+
+  private async saveData(): Promise<void> {
+    const intervalSavedUUIDs: { [key: string]: string[] } = {}
+
+    for (const interval of Object.keys(this.candles)) {
+      const candles = this.candles[interval]
+      if (candles.length > 0) {
+        // Save the candles for the current interval
+        const savedUUIDs = await this.databaseService.batchSaveFootPrintCandles(candles)
+        // Store the UUIDs of the saved candles
+        intervalSavedUUIDs[interval] = savedUUIDs
+
+        // TODO: Check whether the candles were saved. Handle ones that aren't saved
+      }
+    }
+
+    // Optional: Log saved UUIDs or perform additional actions with them
+    console.log(intervalSavedUUIDs)
   }
 
   private checkAndBuildNewCandles(baseInterval: INTERVALS = INTERVALS.FIVE_MINUTES, targetInterval: INTERVALS, value: IFootPrintClosedCandle) {
@@ -79,7 +98,6 @@ export class BackfillService {
       if (this.candles[baseInterval].length >= numCandlesNeeded) {
         const candles: IFootPrintClosedCandle[] = this.candles[baseInterval].slice(-numCandlesNeeded)
         const newCandle: IFootPrintClosedCandle = mergeFootPrintCandles(candles, targetRule.target)
-        // const newCandle: IFootPrintClosedCandle = this.buildAggregatedValue(candles, targetRule.target, candles[0].openTimeMs)
 
         const nextBase: INTERVALS = targetRule.target
         const nextTarget: INTERVALS = targetRule.target
@@ -93,12 +111,28 @@ export class BackfillService {
   private async buildBaseCandle(): Promise<void> {
     const closedCandle: IFootPrintClosedCandle | undefined = this.aggregators[this.BASE_SYMBOL].retireActiveCandle()
 
+    this.aggregators[this.BASE_SYMBOL].clearCandleQueue() // Because we don't need a queue here in this backfiller
+
     if (closedCandle) {
       this.candles[this.BASE_INTERVAL].push(closedCandle)
-      // await this.persistCandlesToStorage()
     }
 
     this.aggregators[this.BASE_SYMBOL].createNewCandle(this.exchange, this.BASE_SYMBOL, this.BASE_INTERVAL, KlineIntervalMs[INTERVALS.ONE_MINUTE])
+  }
+
+  private processTradeRow(trade: IAggregatedTrade): void {
+    const isBuyerMaker: boolean = trade.is_buyer_maker === 'true'
+    const quantity: number = Number(trade.quantity)
+    const price: number = Number(trade.price)
+    this.aggregators[this.BASE_SYMBOL].processNewTrades(isBuyerMaker, quantity, price)
+  }
+
+  private async closeAndPrepareNextCandle(): Promise<void> {
+    this.currTestTime = new Date(this.nextMinuteCandleClose)
+    this.nextMinuteCandleClose = new Date(this.nextMinuteCandleClose.getTime() + 60 * 1000)
+    this.aggregators[this.BASE_SYMBOL].setCurrMinute(this.currTestTime)
+
+    await this.buildBaseCandle()
   }
 
   private async persistCandlesToStorage() {
@@ -167,17 +201,9 @@ export class BackfillService {
           const tradeTime = new Date(transactTimestamp)
 
           if (tradeTime >= this.nextMinuteCandleClose) {
-            this.currTestTime = new Date(this.nextMinuteCandleClose)
-            this.nextMinuteCandleClose = new Date(this.nextMinuteCandleClose.getTime() + 60 * 1000)
-            this.aggregators[this.BASE_SYMBOL].setCurrMinute(this.currTestTime)
-
-            await this.buildBaseCandle()
-          } else {
-            const isBuyerMaker: boolean = trade.is_buyer_maker === 'true'
-            const quantity: number = Number(trade.quantity)
-            const price: number = Number(trade.price)
-            this.aggregators[this.BASE_SYMBOL].processNewTrades(isBuyerMaker, quantity, price)
+            await this.closeAndPrepareNextCandle()
           }
+          this.processTradeRow(trade)
         }
         console.timeEnd(`reading trades`)
         const cand = this.aggregators[this.BASE_SYMBOL].getAllCandles()
