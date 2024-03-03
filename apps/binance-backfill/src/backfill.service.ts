@@ -71,12 +71,9 @@ export class BackfillService {
         // TODO: Check whether the candles were saved. Handle ones that aren't saved
       }
     }
-
-    // Optional: Log saved UUIDs or perform additional actions with them
-    console.log(intervalSavedUUIDs)
   }
 
-  private checkAndBuildNewCandles(baseInterval: INTERVALS = INTERVALS.FIVE_MINUTES, targetInterval: INTERVALS, value: IFootPrintClosedCandle) {
+  private checkAndBuildLargerTimeframeCandles(baseInterval: INTERVALS, targetInterval: INTERVALS, value: IFootPrintClosedCandle) {
     const rules = CANDLE_BUILDER_RULES[baseInterval]
     const targetRule = rules?.find((rule) => rule.target === targetInterval) ?? rules?.[0]
     const openTime: Date = new Date(value.openTimeMs)
@@ -103,7 +100,7 @@ export class BackfillService {
         const nextTarget: INTERVALS = targetRule.target
 
         this.candles[targetRule.target].push(newCandle)
-        this.checkAndBuildNewCandles(nextBase, nextTarget, newCandle)
+        this.checkAndBuildLargerTimeframeCandles(nextBase, nextTarget, newCandle)
       }
     }
   }
@@ -118,6 +115,12 @@ export class BackfillService {
     }
 
     this.aggregators[this.BASE_SYMBOL].createNewCandle(this.exchange, this.BASE_SYMBOL, this.BASE_INTERVAL, KlineIntervalMs[INTERVALS.ONE_MINUTE])
+
+    this.checkAndBuildLargerTimeframeCandles(
+      this.BASE_INTERVAL,
+      INTERVALS.FIVE_MINUTES,
+      this.candles[INTERVALS.ONE_MINUTE][this.candles[INTERVALS.ONE_MINUTE].length - 1]
+    )
   }
 
   private processTradeRow(trade: IAggregatedTrade): void {
@@ -133,24 +136,6 @@ export class BackfillService {
     this.aggregators[this.BASE_SYMBOL].setCurrMinute(this.currTestTime)
 
     await this.buildBaseCandle()
-  }
-
-  private async persistCandlesToStorage() {
-    const queuedCandles = this.aggregators[this.BASE_SYMBOL].getQueuedCandles()
-    if (queuedCandles.length <= 500) {
-      return
-    }
-
-    this.logger.log(
-      'Saving batch of candles',
-      queuedCandles.map((c) => c.uuid)
-    )
-
-    const savedUUIDs = await this.databaseService.batchSaveFootPrintCandles([...queuedCandles])
-
-    // Filter out successfully saved candles
-    this.aggregators[this.BASE_SYMBOL].markSavedCandles(savedUUIDs)
-    this.aggregators[this.BASE_SYMBOL].pruneCandleQueue()
   }
 
   private async downloadAndProcessCsvFiles() {
@@ -206,8 +191,9 @@ export class BackfillService {
           this.processTradeRow(trade)
         }
         console.timeEnd(`reading trades`)
-        const cand = this.aggregators[this.BASE_SYMBOL].getAllCandles()
-        console.log(cand?.length)
+        Object.keys(this.candles).forEach((interval: INTERVALS) => {
+          console.log(`${interval} has #${this.candles[interval].length} candles`)
+        })
 
         console.log(`Downloaded and parsed file for ${dateString}`)
         process.exit(1)
