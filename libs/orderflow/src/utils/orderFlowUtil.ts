@@ -2,39 +2,19 @@ import { descendingOrder, mergeDedupeArrays } from './array'
 import { getNewestDate, getOldestDate } from './date'
 import { doMathOnProp } from './math'
 import { IFootPrintClosedCandle, IPriceLevelsClosed } from '../dto/orderflow.dto'
-import { FootPrintCandle } from '@database/entity/footprint_candle.entity'
 
-function omitId(candle: FootPrintCandle): Omit<FootPrintCandle, 'id'> {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { id, ...rest } = candle
-  return rest
-}
-
-function createClosedCandle(candle: Omit<FootPrintCandle, 'id'>, interval: string): IFootPrintClosedCandle {
-  return {
-    ...candle,
-    uuid: crypto.randomUUID(),
-    interval,
-    openTime: candle.openTime.toISOString(),
-    closeTime: candle.closeTime.toISOString(),
-    isClosed: true,
-    didPersistToStore: false
-  }
-}
-
-export function mergeFootPrintCandles(candles: FootPrintCandle[], interval: string): IFootPrintClosedCandle {
+export function mergeFootPrintCandles(candles: IFootPrintClosedCandle[], interval: string): IFootPrintClosedCandle {
   if (!candles.length) {
     throw new Error('no candles!')
   }
 
-  const [firstCandle, ...otherCandles] = candles
-  const baseCandle = omitId(firstCandle)
+  const [baseCandle, ...otherCandles] = candles
 
   if (otherCandles.length === 0) {
-    return createClosedCandle(baseCandle, interval)
+    return baseCandle
   }
 
-  const aggrCandle: Omit<FootPrintCandle, 'id'> = structuredClone(baseCandle)
+  const aggrCandle: IFootPrintClosedCandle = structuredClone(baseCandle)
 
   for (const candle of otherCandles) aggregateCandleProperties(aggrCandle, candle)
 
@@ -42,19 +22,19 @@ export function mergeFootPrintCandles(candles: FootPrintCandle[], interval: stri
     ...aggrCandle,
     uuid: crypto.randomUUID(),
     interval,
-    openTime: aggrCandle.openTime.toISOString(),
-    closeTime: aggrCandle.closeTime.toISOString(),
+    openTime: aggrCandle.openTime,
+    closeTime: aggrCandle.closeTime,
     isClosed: true,
     didPersistToStore: false
   }
 }
 
-function aggregateCandleProperties(aggrCandle: Omit<FootPrintCandle, 'id'>, candle: FootPrintCandle): void {
+function aggregateCandleProperties(aggrCandle: IFootPrintClosedCandle, candle: IFootPrintClosedCandle): void {
   const openDts = [new Date(aggrCandle.openTime), new Date(candle.openTime)]
   const closeDts = [new Date(aggrCandle.closeTime), new Date(candle.closeTime)]
 
-  aggrCandle.openTime = getOldestDate(openDts)
-  aggrCandle.closeTime = getNewestDate(closeDts)
+  aggrCandle.openTime = getOldestDate(openDts).toISOString()
+  aggrCandle.closeTime = getNewestDate(closeDts).toISOString()
 
   aggrCandle.volumeDelta = doMathOnProp(aggrCandle, candle, 'volumeDelta', '+')
   aggrCandle.volume = doMathOnProp(aggrCandle, candle, 'volume', '+')

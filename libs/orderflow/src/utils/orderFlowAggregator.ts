@@ -91,7 +91,7 @@ export class OrderFlowAggregator {
     console.log(`len after: ${this.candleQueue.length}`)
   }
 
-  public retireActiveCandle(): void {
+  public retireActiveCandle(): IFootPrintClosedCandle | undefined {
     const candle = this.activeCandle
 
     if (!candle) {
@@ -127,6 +127,8 @@ export class OrderFlowAggregator {
 
     this.candleQueue.push(closedCandle)
     delete this.activeCandle
+
+    return closedCandle
   }
 
   public createNewCandle(

@@ -4,19 +4,23 @@ import { parse } from 'csv-parse/sync'
 import * as JSZip from 'jszip'
 import { firstValueFrom } from 'rxjs'
 import { DatabaseService } from '@database'
+import { CANDLE_BUILDER_RULES } from '@orderflow/constants'
 import { IAggregatedTrade } from '@orderflow/dto/binanceData.dto'
 import { IFootPrintClosedCandle } from '@orderflow/dto/orderflow.dto'
+import { calculateCandlesNeeded } from '@orderflow/utils/candles'
 import { calculateStartDate } from '@orderflow/utils/date'
 import { OrderFlowAggregator } from '@orderflow/utils/orderFlowAggregator'
-import { CACHE_LIMIT, Exchange, INTERVALS, KlineIntervalMs } from '@tsquant/exchangeapi/dist/lib/constants'
+import { mergeFootPrintCandles } from '@orderflow/utils/orderFlowUtil'
+import { CACHE_LIMIT, Exchange, INTERVALS, KlineIntervalMs, KlineIntervalTimes } from '@tsquant/exchangeapi/dist/lib/constants'
 
 @Injectable()
 export class BackfillService {
   private readonly baseUrl = 'https://data.binance.vision/data/futures/um/daily/aggTrades'
+  private exchange: Exchange = Exchange.BINANCE
   private readonly BASE_SYMBOL = 'BTCUSDT'
   private readonly BASE_INTERVAL = INTERVALS.ONE_MINUTE
   private currTestTime: Date = new Date()
-  private nextCandleTime: Date = new Date()
+  private nextMinuteCandleClose: Date = new Date()
 
   protected symbols: string[] = process.env.SYMBOLS ? process.env.SYMBOLS.split(',') : [this.BASE_SYMBOL]
 
@@ -53,9 +57,48 @@ export class BackfillService {
     // await this.saveData(symbol)
   }
 
-  private async triggerCandleClose(): Promise<void> {
-    this.aggregators[this.BASE_SYMBOL].processCandleClosed()
-    // await this.persistCandlesToStorage()
+  private checkAndBuildNewCandles(baseInterval: INTERVALS = INTERVALS.FIVE_MINUTES, targetInterval: INTERVALS, value: IFootPrintClosedCandle) {
+    const rules = CANDLE_BUILDER_RULES[baseInterval]
+    const targetRule = rules?.find((rule) => rule.target === targetInterval) ?? rules?.[0]
+    const openTime: Date = new Date(value.openTimeMs)
+    const { amount, duration } = KlineIntervalTimes[baseInterval]
+
+    if (!targetRule) {
+      return
+    }
+
+    if (duration === 'minutes') {
+      openTime.setMinutes(openTime.getMinutes() + amount, 0, 0)
+    } else if (duration === 'h') {
+      openTime.setHours(openTime.getHours() + amount, 0, 0)
+    }
+
+    if (targetRule?.condition(openTime)) {
+      const numCandlesNeeded: number = calculateCandlesNeeded(KlineIntervalMs[baseInterval], KlineIntervalMs[targetRule.target])
+
+      if (this.candles[baseInterval].length >= numCandlesNeeded) {
+        const candles: IFootPrintClosedCandle[] = this.candles[baseInterval].slice(-numCandlesNeeded)
+        const newCandle: IFootPrintClosedCandle = mergeFootPrintCandles(candles, targetRule.target)
+        // const newCandle: IFootPrintClosedCandle = this.buildAggregatedValue(candles, targetRule.target, candles[0].openTimeMs)
+
+        const nextBase: INTERVALS = targetRule.target
+        const nextTarget: INTERVALS = targetRule.target
+
+        this.candles[targetRule.target].push(newCandle)
+        this.checkAndBuildNewCandles(nextBase, nextTarget, newCandle)
+      }
+    }
+  }
+
+  private async buildBaseCandle(): Promise<void> {
+    const closedCandle: IFootPrintClosedCandle | undefined = this.aggregators[this.BASE_SYMBOL].retireActiveCandle()
+
+    if (closedCandle) {
+      this.candles[this.BASE_INTERVAL].push(closedCandle)
+      // await this.persistCandlesToStorage()
+    }
+
+    this.aggregators[this.BASE_SYMBOL].createNewCandle(this.exchange, this.BASE_SYMBOL, this.BASE_INTERVAL, KlineIntervalMs[INTERVALS.ONE_MINUTE])
   }
 
   private async persistCandlesToStorage() {
@@ -77,24 +120,21 @@ export class BackfillService {
   }
 
   private async downloadAndProcessCsvFiles() {
-    const backfillStartAt: string = process.env.BACKFILL_START_AT as string
-    const backfillEndAt: string = process.env.BACKFILL_END_AT as string
+    const backfillStartAt = calculateStartDate(process.env.BACKFILL_START_AT as string)
+    const backfillEndAt = calculateStartDate(process.env.BACKFILL_END_AT as string)
+    let currentTestDate = new Date(backfillStartAt)
 
-    const startDate = calculateStartDate(backfillStartAt)
-    const endDate = calculateStartDate(backfillEndAt)
-    let currentDate = new Date(startDate)
-
-    this.currTestTime = new Date(startDate)
-    this.nextCandleTime = new Date(this.currTestTime.getTime() + 60000)
+    this.currTestTime = new Date(backfillStartAt)
+    this.nextMinuteCandleClose = new Date(this.currTestTime.getTime() + 60000)
     this.aggregators[this.BASE_SYMBOL].setCurrMinute(this.currTestTime)
 
-    console.log({ startDate })
-    console.log({ endDate })
+    console.log({ backfillStartAt })
+    console.log({ backfillEndAt })
     console.log({ currTestTime: this.currTestTime })
-    console.log({ nextCandleTime: this.nextCandleTime })
+    console.log({ nextMinuteCandleClose: this.nextMinuteCandleClose })
 
-    while (currentDate <= endDate) {
-      const dateString = currentDate.toISOString().split('T')[0]
+    while (currentTestDate <= backfillEndAt) {
+      const dateString = currentTestDate.toISOString().split('T')[0]
       const fileUrl = `${this.baseUrl}/${this.BASE_SYMBOL}/${this.BASE_SYMBOL}-aggTrades-${dateString}.zip`
 
       try {
@@ -126,12 +166,12 @@ export class BackfillService {
           const transactTimestamp: number = Number(trade.transact_time)
           const tradeTime = new Date(transactTimestamp)
 
-          if (tradeTime >= this.nextCandleTime) {
-            this.currTestTime = new Date(this.nextCandleTime)
-            this.nextCandleTime = new Date(this.nextCandleTime.getTime() + 60 * 1000)
+          if (tradeTime >= this.nextMinuteCandleClose) {
+            this.currTestTime = new Date(this.nextMinuteCandleClose)
+            this.nextMinuteCandleClose = new Date(this.nextMinuteCandleClose.getTime() + 60 * 1000)
             this.aggregators[this.BASE_SYMBOL].setCurrMinute(this.currTestTime)
 
-            await this.triggerCandleClose()
+            await this.buildBaseCandle()
           } else {
             const isBuyerMaker: boolean = trade.is_buyer_maker === 'true'
             const quantity: number = Number(trade.quantity)
@@ -149,7 +189,7 @@ export class BackfillService {
         console.error(`Failed to download or process the file for ${dateString}:`, error)
       }
 
-      currentDate = new Date(currentDate.setDate(currentDate.getDate() + 1))
+      currentTestDate = new Date(currentTestDate.setDate(currentTestDate.getDate() + 1))
     }
   }
 }
