@@ -54,10 +54,21 @@ export class BackfillService {
     })
 
     await this.downloadAndProcessCsvFiles()
+    this.printDebug()
     await this.saveData()
   }
 
+  private printDebug(): void {
+    Object.keys(this.candles).forEach((interval: INTERVALS) => {
+      this.logger.log(`${interval} has #${this.candles[interval].length} candles`)
+      this.logger.log(`${interval} first open candle ${this.candles[interval]?.[0]?.openTime}`)
+      this.logger.log(`${interval} last open candle ${this.candles[interval]?.[this.candles[interval].length - 1]?.openTime}`)
+    })
+  }
+
   private async saveData(): Promise<void> {
+    this.logger.log('saving data')
+
     const intervalSavedUUIDs: { [key: string]: string[] } = {}
 
     for (const interval of Object.keys(this.candles)) {
@@ -114,13 +125,14 @@ export class BackfillService {
       this.candles[this.BASE_INTERVAL].push(closedCandle)
     }
 
-    this.aggregators[this.BASE_SYMBOL].createNewCandle(this.exchange, this.BASE_SYMBOL, this.BASE_INTERVAL, KlineIntervalMs[INTERVALS.ONE_MINUTE])
-
     this.checkAndBuildLargerTimeframeCandles(
       this.BASE_INTERVAL,
       INTERVALS.FIVE_MINUTES,
       this.candles[INTERVALS.ONE_MINUTE][this.candles[INTERVALS.ONE_MINUTE].length - 1]
     )
+
+    this.incrementTestMinute()
+    this.aggregators[this.BASE_SYMBOL].createNewCandle(this.exchange, this.BASE_SYMBOL, this.BASE_INTERVAL, KlineIntervalMs[INTERVALS.ONE_MINUTE])
   }
 
   private processTradeRow(trade: IAggregatedTrade): void {
@@ -131,11 +143,13 @@ export class BackfillService {
   }
 
   private async closeAndPrepareNextCandle(): Promise<void> {
+    await this.buildBaseCandle()
+  }
+
+  private incrementTestMinute(): void {
     this.currTestTime = new Date(this.nextMinuteCandleClose)
     this.nextMinuteCandleClose = new Date(this.nextMinuteCandleClose.getTime() + 60 * 1000)
     this.aggregators[this.BASE_SYMBOL].setCurrMinute(this.currTestTime)
-
-    await this.buildBaseCandle()
   }
 
   private async downloadAndProcessCsvFiles() {
@@ -143,14 +157,16 @@ export class BackfillService {
     const backfillEndAt = calculateStartDate(process.env.BACKFILL_END_AT as string)
     let currentTestDate = new Date(backfillStartAt)
 
+    console.time(`Downloading and processing aggTrades ${backfillStartAt} - ${backfillEndAt}`)
+
     this.currTestTime = new Date(backfillStartAt)
     this.nextMinuteCandleClose = new Date(this.currTestTime.getTime() + 60000)
     this.aggregators[this.BASE_SYMBOL].setCurrMinute(this.currTestTime)
 
-    console.log({ backfillStartAt })
-    console.log({ backfillEndAt })
-    console.log({ currTestTime: this.currTestTime })
-    console.log({ nextMinuteCandleClose: this.nextMinuteCandleClose })
+    this.logger.log(`backfillStartAt ${backfillStartAt}`)
+    this.logger.log(`backfillEndAt: ${backfillEndAt}`)
+    this.logger.log(`currTestTime: ${this.currTestTime}`)
+    this.logger.log(`nextMinuteCandleClose: ${this.nextMinuteCandleClose}`)
 
     while (currentTestDate <= backfillEndAt) {
       const dateString = currentTestDate.toISOString().split('T')[0]
@@ -178,30 +194,27 @@ export class BackfillService {
         })
         console.timeEnd(`parsing ${fileUrl}`)
 
-        console.time(`reading trades`)
-        console.log(`trades #${trades.length}`)
+        console.time('Processing trades')
+        this.logger.log(`trades #${trades.length}`)
         for (let i = 0; i < trades.length; i++) {
           const trade: IAggregatedTrade = trades[i]
           const transactTimestamp: number = Number(trade.transact_time)
           const tradeTime = new Date(transactTimestamp)
 
-          if (tradeTime >= this.nextMinuteCandleClose) {
+          if (tradeTime >= this.nextMinuteCandleClose || i === trades.length - 1) {
             await this.closeAndPrepareNextCandle()
           }
           this.processTradeRow(trade)
         }
-        console.timeEnd(`reading trades`)
-        Object.keys(this.candles).forEach((interval: INTERVALS) => {
-          console.log(`${interval} has #${this.candles[interval].length} candles`)
-        })
+        console.timeEnd('Processing trades')
 
-        console.log(`Downloaded and parsed file for ${dateString}`)
-        process.exit(1)
+        this.logger.log(`Downloaded and parsed file for ${dateString}`)
       } catch (error) {
-        console.error(`Failed to download or process the file for ${dateString}:`, error)
+        this.logger.error(`Failed to download or process the file for ${dateString}:`, error)
       }
 
       currentTestDate = new Date(currentTestDate.setDate(currentTestDate.getDate() + 1))
     }
+    console.timeEnd(`Downloading and processing aggTrades ${backfillStartAt} - ${backfillEndAt}`)
   }
 }
