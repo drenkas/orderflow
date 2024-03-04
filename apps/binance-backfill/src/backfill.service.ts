@@ -65,7 +65,6 @@ export class BackfillService {
 
     await this.downloadAndProcessCsvFiles()
     this.printDebug()
-    await this.saveData()
     console.timeEnd(`Backfilling for ${this.BASE_SYMBOL} took`)
   }
 
@@ -85,28 +84,32 @@ export class BackfillService {
     })
   }
 
-  private async saveData(specificInterval?: string): Promise<void> {
+  private async saveData(): Promise<void> {
     this.logger.log('saving data')
     console.time('Saving data completed')
 
-    const intervalSavedUUIDs: { [key: string]: string[] } = {}
-
-    const intervalsToProcess = specificInterval ? [specificInterval] : Object.keys(this.candles)
-
-    for (const interval of intervalsToProcess) {
-      const candles = this.candles[interval]
-      if (candles && candles.length > 0) {
+    for (const interval of Object.keys(this.candles)) {
+      // Filter candles that have not been persisted to the store
+      const candles = this.candles[interval].filter((candle) => !candle.didPersistToStore)
+      if (candles.length > 0) {
         this.logger.log(`Processing ${candles.length} candles for interval ${interval}`)
 
         // Save the candles for the current interval
         const savedUUIDs = await this.databaseService.batchSaveFootPrintCandles(candles)
-        // Store the UUIDs of the saved candles
-        intervalSavedUUIDs[interval] = savedUUIDs
 
         this.logger.log(`Successfully saved ${savedUUIDs.length} out of ${candles.length} candles for interval ${interval}`)
 
-        // Clear all items for this interval after saving
-        this.candles[interval] = []
+        // Update didPersistToStore to true for saved candles
+        for (const candle of this.candles[interval]) {
+          if (candle.uuid && savedUUIDs.includes(candle?.uuid)) {
+            candle.didPersistToStore = true
+          }
+        }
+
+        // Clear all items for one minute because it can grow too large = (1440 items for one file)
+        if (interval === INTERVALS.ONE_MINUTE) {
+          this.candles[interval] = []
+        }
 
         // TODO: Check whether the candles were saved. Handle ones that aren't saved
       }
@@ -203,7 +206,7 @@ export class BackfillService {
     this.logger.log(`Adjusted backfillStartAt: ${backfillStartAt}`)
     this.logger.log(`Adjusted backfillEndAt: ${backfillEndAt}`)
     this.logger.log('============================================')
-    const currentTestDate = new Date(backfillStartAt)
+    let currentTestDate = new Date(backfillStartAt)
 
     console.time(`Downloading and processing aggTrades ${backfillStartAt} - ${backfillEndAt}`)
 
@@ -255,7 +258,7 @@ export class BackfillService {
         console.timeEnd('Processing trades')
 
         this.logger.log(`Downloaded and parsed file for ${dateString}`)
-        await this.saveData(INTERVALS.ONE_MINUTE) // Clear up memory by saving & removing the 1440 1m candles for this file
+        await this.saveData() // Clear up memory by saving & removing the 1440 1m candles for this file
       } catch (error) {
         this.logger.error(`Failed to download or process the file for ${dateString}:`, error)
       }
