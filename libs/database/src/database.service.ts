@@ -17,36 +17,27 @@ export class DatabaseService {
   ) {}
 
   async batchSaveFootPrintCandles(candles: IFootPrintClosedCandle[]): Promise<string[]> {
+    const saved: string[] = []
+    const totalCandles = candles.length
     try {
-      // Clone and clean each candle before saving
-      const cleanedCandles = candles.map((candle) => {
-        const cleanedCandle = {
-          ...candle,
-          uuid: undefined
-        }
-
+      for (let index = 0; index < totalCandles; index++) {
+        const candle = candles[index]
+        this.logger.log(`Processing candle ${index + 1}/${totalCandles}, ${candle.interval}`)
+        const cleanedCandle = { ...candle }
         delete cleanedCandle.uuid
 
-        return cleanedCandle
-      })
+        await this.footprintCandleRepository.upsert(cleanedCandle, {
+          conflictPaths: CandleUniqueColumns,
+          upsertType: 'on-conflict-do-update',
+          skipUpdateIfNoValuesChanged: true
+        })
 
-      // console.log(`saving data: `, JSON.stringify({ levels, cleanedCandles }, null, 2))
-
-      await this.footprintCandleRepository.upsert(cleanedCandles, {
-        conflictPaths: CandleUniqueColumns,
-        upsertType: 'on-conflict-do-update',
-        skipUpdateIfNoValuesChanged: true
-      })
-
-      // Return the ids of successfully saved candles
-      const saved = candles.map((candle) => candle.uuid)
-
-      // console.log(`batch saved candles: `, saved)
-      return saved
+        if (candle?.uuid) saved.push(candle.uuid)
+      }
     } catch (error) {
       console.error('Error bulk inserting FootPrintCandles:', error)
-      return []
     }
+    return saved
   }
 
   async getTestCandles(): Promise<FootPrintCandle[]> {

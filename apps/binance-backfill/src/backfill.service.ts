@@ -17,12 +17,12 @@ import { CACHE_LIMIT, Exchange, INTERVALS, KlineIntervalMs, KlineIntervalTimes }
 export class BackfillService {
   private readonly baseUrl = 'https://data.binance.vision/data/futures/um/daily/aggTrades'
   private readonly exchange: Exchange = Exchange.BINANCE
-  private readonly BASE_SYMBOL = 'BTCUSDT'
   private readonly BASE_INTERVAL = INTERVALS.ONE_MINUTE
   private currTestTime: Date = new Date()
   private nextMinuteCandleClose: Date = new Date()
 
-  protected symbols: string[] = process.env.SYMBOLS ? process.env.SYMBOLS.split(',') : [this.BASE_SYMBOL]
+  protected symbols: string[] = process.env.SYMBOLS ? process.env.SYMBOLS.split(',') : ['BTCUSDT']
+  private readonly BASE_SYMBOL = this.symbols.shift() as string
 
   private logger: Logger = new Logger(BackfillService.name)
 
@@ -45,6 +45,7 @@ export class BackfillService {
   constructor(private readonly databaseService: DatabaseService, private readonly httpService: HttpService) {}
 
   async onModuleInit() {
+    console.time(`Backfilling for ${this.BASE_SYMBOL} took`)
     this.logger.log('start backfilling')
 
     const maxRowsInMemory = CACHE_LIMIT
@@ -56,11 +57,12 @@ export class BackfillService {
     await this.downloadAndProcessCsvFiles()
     this.printDebug()
     await this.saveData()
+    console.time(`Backfilling for ${this.BASE_SYMBOL} took`)
   }
 
   private printDebug(): void {
     Object.keys(this.candles).forEach((interval: INTERVALS) => {
-      this.logger.log(`${interval} has #${this.candles[interval].length} candles`)
+      this.logger.log(`${interval} has ${this.candles[interval].length} candles`)
       this.logger.log(`${interval} first open candle ${this.candles[interval]?.[0]?.openTime}`)
       this.logger.log(`${interval} last open candle ${this.candles[interval]?.[this.candles[interval].length - 1]?.openTime}`)
     })
@@ -68,20 +70,26 @@ export class BackfillService {
 
   private async saveData(): Promise<void> {
     this.logger.log('saving data')
+    console.time('Saving data completed')
 
     const intervalSavedUUIDs: { [key: string]: string[] } = {}
 
     for (const interval of Object.keys(this.candles)) {
       const candles = this.candles[interval]
       if (candles.length > 0) {
+        this.logger.log(`Processing ${candles.length} candles for interval ${interval}`)
+
         // Save the candles for the current interval
         const savedUUIDs = await this.databaseService.batchSaveFootPrintCandles(candles)
         // Store the UUIDs of the saved candles
         intervalSavedUUIDs[interval] = savedUUIDs
 
+        this.logger.log(`Successfully saved ${savedUUIDs.length} out of ${candles.length} candles for interval ${interval}`)
+
         // TODO: Check whether the candles were saved. Handle ones that aren't saved
       }
     }
+    console.timeEnd('Saving data completed')
   }
 
   private checkAndBuildLargerTimeframeCandles(baseInterval: INTERVALS, targetInterval: INTERVALS, value: IFootPrintClosedCandle) {
@@ -116,7 +124,7 @@ export class BackfillService {
     }
   }
 
-  private async buildBaseCandle(): Promise<void> {
+  private async closeAndPrepareNextCandle(): Promise<void> {
     const closedCandle: IFootPrintClosedCandle | undefined = this.aggregators[this.BASE_SYMBOL].retireActiveCandle()
 
     this.aggregators[this.BASE_SYMBOL].clearCandleQueue() // Because we don't need a queue here in this backfiller
@@ -140,10 +148,6 @@ export class BackfillService {
     const quantity: number = Number(trade.quantity)
     const price: number = Number(trade.price)
     this.aggregators[this.BASE_SYMBOL].processNewTrades(isBuyerMaker, quantity, price)
-  }
-
-  private async closeAndPrepareNextCandle(): Promise<void> {
-    await this.buildBaseCandle()
   }
 
   private incrementTestMinute(): void {
@@ -195,7 +199,7 @@ export class BackfillService {
         console.timeEnd(`parsing ${fileUrl}`)
 
         console.time('Processing trades')
-        this.logger.log(`trades #${trades.length}`)
+        this.logger.log(`trades ${trades.length}`)
         for (let i = 0; i < trades.length; i++) {
           const trade: IAggregatedTrade = trades[i]
           const transactTimestamp: number = Number(trade.transact_time)

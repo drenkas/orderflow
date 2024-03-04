@@ -1,5 +1,5 @@
 export interface IFootPrintCandle {
-  uuid: string
+  uuid?: string
   openTime: string
   openTimeMs: number
   closeTime: string
