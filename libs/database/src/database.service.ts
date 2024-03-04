@@ -22,7 +22,7 @@ export class DatabaseService {
     try {
       for (let index = 0; index < totalCandles; index++) {
         const candle = candles[index]
-        this.logger.log(`Processing candle ${index + 1}/${totalCandles}, ${candle.interval}`)
+        this.logger.log(`Processing candle ${index + 1}/${totalCandles}, ${candle.interval} ${candle.openTime}`)
         const cleanedCandle = { ...candle }
         delete cleanedCandle.uuid
 
