@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { Injectable, Logger } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
-import { LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm'
+import { FindManyOptions, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm'
 import { CandleUniqueColumns, FootPrintCandle } from '@database/entity/footprint_candle.entity'
 import { IFootPrintClosedCandle } from '@orderflow/dto/orderflow.dto'
 import { CACHE_LIMIT } from '@tsquant/exchangeapi/dist/lib/constants/exchange'
@@ -51,7 +51,7 @@ export class DatabaseService {
     }
   }
 
-  async getCandles(exchange: string, symbol: string, interval: string, openTime?: Date, closeTime?: Date): Promise<FootPrintCandle[]> {
+  async getCandles(exchange: string, symbol: string, interval: string, openTime?: Date, closeTime?: Date): Promise<IFootPrintClosedCandle[]> {
     try {
       const whereConditions = {
         exchange,
@@ -67,10 +67,25 @@ export class DatabaseService {
         whereConditions['closeTime'] = LessThanOrEqual(closeTime)
       }
 
-      return await this.footprintCandleRepository.find({
+      const queryOptions: FindManyOptions<FootPrintCandle> = {
         where: whereConditions,
-        order: { openTime: 'ASC' }
-      })
+        order: { openTime: 'ASC' as const }
+      }
+
+      const rows = await this.footprintCandleRepository.find(queryOptions)
+
+      const candles: IFootPrintClosedCandle[] = rows.map(
+        (row) =>
+          ({
+            ...row,
+            didPersistToStore: true,
+            isClosed: true,
+            openTime: new Date(row.openTime).toISOString(),
+            closeTime: new Date(row.closeTime).toISOString()
+          } as IFootPrintClosedCandle)
+      )
+
+      return candles
     } catch (error) {
       console.error('Error fetching aggregated candles:', error)
       throw error

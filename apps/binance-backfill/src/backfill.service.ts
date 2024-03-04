@@ -63,6 +63,9 @@ export class BackfillService {
     this.logger.log(`Latest timestamp for ${this.BASE_SYMBOL} found is ${new Date(latestTimestamp)}`)
     this.logger.log('==========================================================')
 
+    // We need to populate 1D, 1W, 1M to build HTF candles
+    await this.populateHTFStoredCandles()
+
     await this.downloadAndProcessCsvFiles()
     this.printDebug()
     console.timeEnd(`Backfilling for ${this.BASE_SYMBOL} took`)
@@ -74,6 +77,12 @@ export class BackfillService {
     this.aggregators[this.BASE_SYMBOL] = new OrderFlowAggregator(Exchange.BINANCE, this.BASE_SYMBOL, INTERVALS.ONE_MINUTE, intervalSizeMs, {
       maxCacheInMemory: maxRowsInMemory
     })
+  }
+
+  private async populateHTFStoredCandles(): Promise<void> {
+    this.candles[INTERVALS.ONE_DAY] = await this.databaseService.getCandles(Exchange.BINANCE, this.BASE_SYMBOL, INTERVALS.ONE_DAY) ?? []
+    this.candles[INTERVALS.ONE_WEEK] = await this.databaseService.getCandles(Exchange.BINANCE, this.BASE_SYMBOL, INTERVALS.ONE_WEEK) ?? []
+    this.candles[INTERVALS.ONE_MONTH] = await this.databaseService.getCandles(Exchange.BINANCE, this.BASE_SYMBOL, INTERVALS.ONE_MONTH) ?? []
   }
 
   private printDebug(): void {
