@@ -8,10 +8,11 @@ import { CANDLE_BUILDER_RULES } from '@orderflow/constants'
 import { IAggregatedTrade } from '@orderflow/dto/binanceData.dto'
 import { IFootPrintClosedCandle } from '@orderflow/dto/orderflow.dto'
 import { calculateCandlesNeeded } from '@orderflow/utils/candles'
-import { calculateStartDate } from '@orderflow/utils/date'
+import { adjustBackfillEndDate, adjustBackfillStartDate, calculateStartDate } from '@orderflow/utils/date'
 import { OrderFlowAggregator } from '@orderflow/utils/orderFlowAggregator'
 import { mergeFootPrintCandles } from '@orderflow/utils/orderFlowUtil'
 import { CACHE_LIMIT, Exchange, INTERVALS, KlineIntervalMs, KlineIntervalTimes } from '@tsquant/exchangeapi/dist/lib/constants'
+import { SymbolIntervalTimestampRangeDictionary } from '@tsquant/exchangeapi/dist/lib/types'
 
 @Injectable()
 export class BackfillService {
@@ -23,6 +24,8 @@ export class BackfillService {
 
   protected symbols: string[] = process.env.SYMBOLS ? process.env.SYMBOLS.split(',') : ['BTCUSDT']
   private readonly BASE_SYMBOL = this.symbols.shift() as string
+
+  private timestampsRange: SymbolIntervalTimestampRangeDictionary = {}
 
   private logger: Logger = new Logger(BackfillService.name)
 
@@ -48,16 +51,30 @@ export class BackfillService {
     console.time(`Backfilling for ${this.BASE_SYMBOL} took`)
     this.logger.log('start backfilling')
 
-    const maxRowsInMemory = CACHE_LIMIT
-    const intervalSizeMs: number = KlineIntervalMs[INTERVALS.ONE_MINUTE]
-    this.aggregators[this.BASE_SYMBOL] = new OrderFlowAggregator(Exchange.BINANCE, this.BASE_SYMBOL, INTERVALS.ONE_MINUTE, intervalSizeMs, {
-      maxCacheInMemory: maxRowsInMemory
-    })
+    this.setupTradeAggregator()
+
+    await this.getStoredFirstAndLastTimestamps(this.BASE_SYMBOL)
+
+    const earliestTimestamp = Math.min(...Object.values(this.timestampsRange[this.BASE_SYMBOL]).map((range) => range.first))
+    const latestTimestamp = Math.max(...Object.values(this.timestampsRange[this.BASE_SYMBOL]).map((range) => range.last))
+
+    this.logger.log('==================== Timestamp Range ====================')
+    this.logger.log(`Earliest timestamp for ${this.BASE_SYMBOL} found is ${new Date(earliestTimestamp)}`)
+    this.logger.log(`Latest timestamp for ${this.BASE_SYMBOL} found is ${new Date(latestTimestamp)}`)
+    this.logger.log('==========================================================')
 
     await this.downloadAndProcessCsvFiles()
     this.printDebug()
     await this.saveData()
     console.timeEnd(`Backfilling for ${this.BASE_SYMBOL} took`)
+  }
+
+  private setupTradeAggregator(): void {
+    const maxRowsInMemory = CACHE_LIMIT
+    const intervalSizeMs: number = KlineIntervalMs[INTERVALS.ONE_MINUTE]
+    this.aggregators[this.BASE_SYMBOL] = new OrderFlowAggregator(Exchange.BINANCE, this.BASE_SYMBOL, INTERVALS.ONE_MINUTE, intervalSizeMs, {
+      maxCacheInMemory: maxRowsInMemory
+    })
   }
 
   private printDebug(): void {
@@ -95,6 +112,19 @@ export class BackfillService {
       }
     }
     console.timeEnd('Saving data completed')
+  }
+
+  async getStoredFirstAndLastTimestamps(symbol: string) {
+    if (!this.timestampsRange[symbol]) {
+      this.timestampsRange[symbol] = {}
+    }
+
+    const resultMap = await this.databaseService.getTimestampRange(Exchange.BINANCE, symbol)
+
+    for (const interval in resultMap[symbol]) {
+      // Store the timestamp range for each interval in the symbol's data
+      this.timestampsRange[symbol][interval] = resultMap[symbol][interval]
+    }
   }
 
   private checkAndBuildLargerTimeframeCandles(baseInterval: INTERVALS, targetInterval: INTERVALS, value: IFootPrintClosedCandle) {
@@ -162,9 +192,18 @@ export class BackfillService {
   }
 
   private async downloadAndProcessCsvFiles() {
-    const backfillStartAt = calculateStartDate(process.env.BACKFILL_START_AT as string)
-    const backfillEndAt = calculateStartDate(process.env.BACKFILL_END_AT as string)
-    let currentTestDate = new Date(backfillStartAt)
+    const selectedBackfillStartAt = calculateStartDate(process.env.BACKFILL_START_AT as string)
+    const selectedBackfillEndAt = calculateStartDate(process.env.BACKFILL_END_AT as string)
+    this.logger.log('========== Backfill Time Selection ==========')
+    this.logger.log(`Selected backfillStartAt ${selectedBackfillStartAt}`)
+    this.logger.log(`Selected backfillEndAt: ${selectedBackfillEndAt}`)
+
+    const backfillStartAt = adjustBackfillStartDate(this.timestampsRange[this.BASE_SYMBOL], calculateStartDate(process.env.BACKFILL_START_AT as string))
+    const backfillEndAt = adjustBackfillEndDate(this.timestampsRange[this.BASE_SYMBOL], calculateStartDate(process.env.BACKFILL_END_AT as string))
+    this.logger.log(`Adjusted backfillStartAt: ${backfillStartAt}`)
+    this.logger.log(`Adjusted backfillEndAt: ${backfillEndAt}`)
+    this.logger.log('============================================')
+    const currentTestDate = new Date(backfillStartAt)
 
     console.time(`Downloading and processing aggTrades ${backfillStartAt} - ${backfillEndAt}`)
 
@@ -172,8 +211,6 @@ export class BackfillService {
     this.nextMinuteCandleClose = new Date(this.currTestTime.getTime() + 60000)
     this.aggregators[this.BASE_SYMBOL].setCurrMinute(this.currTestTime)
 
-    this.logger.log(`backfillStartAt ${backfillStartAt}`)
-    this.logger.log(`backfillEndAt: ${backfillEndAt}`)
     this.logger.log(`currTestTime: ${this.currTestTime}`)
     this.logger.log(`nextMinuteCandleClose: ${this.nextMinuteCandleClose}`)
 

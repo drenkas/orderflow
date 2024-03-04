@@ -5,7 +5,7 @@ import { LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm'
 import { CandleUniqueColumns, FootPrintCandle } from '@database/entity/footprint_candle.entity'
 import { IFootPrintClosedCandle } from '@orderflow/dto/orderflow.dto'
 import { CACHE_LIMIT } from '@tsquant/exchangeapi/dist/lib/constants/exchange'
-import { LastStoredSymbolIntervalTimestampsDictionary } from '@tsquant/exchangeapi/dist/lib/types'
+import { SymbolIntervalTimestampRangeDictionary } from '@tsquant/exchangeapi/dist/lib/types'
 
 @Injectable()
 export class DatabaseService {
@@ -96,30 +96,33 @@ export class DatabaseService {
     }
   }
 
-  /** Fetch the last stored timestamp data to continue where we left off. Timestamp is the openTime for kLines */
-  async getLastTimestamp(exchange: string, symbol?: string): Promise<LastStoredSymbolIntervalTimestampsDictionary> {
+  /** Fetch the last and first stored timestamp data to understand the range of stored data. Timestamp is the openTime for kLines */
+  async getTimestampRange(exchange: string, symbol?: string): Promise<SymbolIntervalTimestampRangeDictionary> {
     try {
       const params = symbol ? [exchange, symbol] : [exchange]
       const query = `
-      SELECT symbol, interval, MAX(openTime) as max_timestamp
+      SELECT symbol, interval, MAX("openTime") as max_timestamp, MIN("openTime") as min_timestamp
       FROM footprint_candle
       WHERE exchange = $1${symbol ? ' AND symbol = $2' : ''}
       GROUP BY symbol, interval
     `
 
       const result = await this.footprintCandleRepository.query(query, params)
-      const resultMap: LastStoredSymbolIntervalTimestampsDictionary = {}
+      const resultMap: SymbolIntervalTimestampRangeDictionary = {}
 
       result.forEach((row) => {
         if (!resultMap[row.symbol]) {
           resultMap[row.symbol] = {}
         }
-        resultMap[row.symbol][row.interval] = row.max_timestamp ? new Date(row.max_timestamp).getTime() : 0
+        resultMap[row.symbol][row.interval] = {
+          last: row.max_timestamp ? new Date(row.max_timestamp).getTime() : 0,
+          first: row.min_timestamp ? new Date(row.min_timestamp).getTime() : 0
+        }
       })
 
       return resultMap
     } catch (err) {
-      this.logger.error('Failed to retrieve last timestamps:', err)
+      this.logger.error('Failed to retrieve timestamp ranges:', err)
       return {}
     }
   }

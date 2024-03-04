@@ -43,6 +43,27 @@ export function calculateStartDate(startAt: string) {
   return date
 }
 
+export function adjustBackfillStartDate(processedTimestamps: { [interval: string]: { first: number; last: number } }, originalStartDate: Date) {
+  const timestamps: number[] = Object.values(processedTimestamps).map(ts => ts.last).filter(t => t != null)
+  let latestLast: number = Math.min(...timestamps)
+  latestLast = Math.max(latestLast, originalStartDate.getTime())
+
+  const latestLastDate: Date = new Date(latestLast)
+  latestLastDate.setHours(0, 0, 0, 0)
+
+  return latestLastDate
+}
+
+export function adjustBackfillEndDate(processedTimestamps: { [interval: string]: { first: number; last: number } }, originalEndDate: Date) {
+  const timestamps: number[] = Object.values(processedTimestamps).map(ts => ts.first).filter(t => t != null)
+  const earliestFirst: number = Math.max(...timestamps, originalEndDate.getTime())
+
+  const earliestFirstDate: Date = new Date(earliestFirst)
+  earliestFirstDate.setHours(0, 0, 0, 0)
+
+  return earliestFirstDate
+}
+
 export const alignsWithTargetInterval = (targetInterval: INTERVALS, date: Date) => {
   const hours = date.getHours()
   const minutes = date.getMinutes()

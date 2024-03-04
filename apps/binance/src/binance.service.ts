@@ -9,7 +9,7 @@ import { OrderFlowAggregator } from '@orderflow/utils/orderFlowAggregator'
 import { mergeFootPrintCandles } from '@orderflow/utils/orderFlowUtil'
 import { CACHE_LIMIT, Exchange, KlineIntervalMs } from '@tsquant/exchangeapi/dist/lib/constants'
 import { INTERVALS } from '@tsquant/exchangeapi/dist/lib/constants/candles'
-import { LastStoredSymbolIntervalTimestampsDictionary } from '@tsquant/exchangeapi/dist/lib/types/candles.types'
+import { SymbolIntervalTimestampRangeDictionary } from '@tsquant/exchangeapi/dist/lib/types/candles.types'
 import { BinanceWebSocketService } from 'apps/binance/src/BinanceWebsocketService'
 import { numberInString, WsMessageAggTradeRaw } from 'binance'
 
@@ -34,7 +34,7 @@ export class BinanceService {
     INTERVALS.ONE_MONTH
   ]
 
-  private lastTimestamps: LastStoredSymbolIntervalTimestampsDictionary = {}
+  private timestampsRange: SymbolIntervalTimestampRangeDictionary = {}
 
   private expectedConnections: Map<string, Date> = new Map()
   private openConnections: Map<string, Date> = new Map()
@@ -114,8 +114,8 @@ export class BinanceService {
 
         if (isCloseMinuteMultipleOfFive) {
           for (const interval of this.LARGER_AGGREGATION_INTERVALS) {
-            await this.updateLastTimestamps(symbol, interval)
-            const lastTimestamp = this.lastTimestamps[symbol][interval]
+            await this.updateTimestampRange(symbol, interval)
+            const lastTimestamp = this.timestampsRange[symbol][interval]?.last
 
             // When this candle closes and when the next one in this interval is expected
             const closeTimeMS: number = aggregationEnd.getTime()
@@ -140,15 +140,15 @@ export class BinanceService {
     await this.databaseService.pruneOldData()
   }
 
-  async updateLastTimestamps(symbol: string, interval: INTERVALS) {
-    if (!this.lastTimestamps[symbol]) {
-      this.lastTimestamps[symbol] = {}
+  async updateTimestampRange(symbol: string, interval: INTERVALS) {
+    if (!this.timestampsRange[symbol]) {
+      this.timestampsRange[symbol] = {}
     }
 
-    if (!this.lastTimestamps[symbol][interval]) {
-      const resultMap = await this.databaseService.getLastTimestamp(Exchange.BINANCE, symbol)
+    if (!this.timestampsRange[symbol][interval]) {
+      const resultMap = await this.databaseService.getTimestampRange(Exchange.BINANCE, symbol)
       if (resultMap[symbol]?.[interval]) {
-        this.lastTimestamps[symbol][interval] = resultMap[symbol][interval]
+        this.timestampsRange[symbol][interval] = resultMap[symbol][interval]
       }
     }
   }
