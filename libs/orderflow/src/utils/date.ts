@@ -50,8 +50,8 @@ export function adjustBackfillStartDate(processedTimestamps: { [interval: string
 
   let latestLast = originalStartDate.getTime()
   if (timestamps.length > 0) {
-    const earliestTimestamp = Math.min(...timestamps)
-    latestLast = Math.max(earliestTimestamp, latestLast)
+    const latestTimestamp = Math.max(...timestamps)
+    latestLast = Math.max(latestTimestamp, latestLast)
   }
 
   const latestLastDate: Date = new Date(latestLast)
