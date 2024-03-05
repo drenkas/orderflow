@@ -61,6 +61,15 @@ export class BackfillService {
     this.logger.log('==================== Timestamp Range ====================')
     this.logger.log(`Earliest timestamp for ${this.BASE_SYMBOL} found is ${new Date(earliestTimestamp)}`)
     this.logger.log(`Latest timestamp for ${this.BASE_SYMBOL} found is ${new Date(latestTimestamp)}`)
+    for (const interval of Object.keys(this.timestampsRange[this.BASE_SYMBOL])) {
+      const { first, last } = this.timestampsRange[this.BASE_SYMBOL][interval]
+      this.logger.log(
+        `Interval: ${interval}, First: ${new Date(first).toISOString().replace('T', ' ').substring(0, 19)}, Last: ${new Date(last)
+          .toISOString()
+          .replace('T', ' ')
+          .substring(0, 19)}`
+      )
+    }
     this.logger.log('==========================================================')
 
     // We need to populate 1D, 1W, 1M to build HTF candles
@@ -80,9 +89,9 @@ export class BackfillService {
   }
 
   private async populateHTFStoredCandles(): Promise<void> {
-    this.candles[INTERVALS.ONE_DAY] = await this.databaseService.getCandles(Exchange.BINANCE, this.BASE_SYMBOL, INTERVALS.ONE_DAY) ?? []
-    this.candles[INTERVALS.ONE_WEEK] = await this.databaseService.getCandles(Exchange.BINANCE, this.BASE_SYMBOL, INTERVALS.ONE_WEEK) ?? []
-    this.candles[INTERVALS.ONE_MONTH] = await this.databaseService.getCandles(Exchange.BINANCE, this.BASE_SYMBOL, INTERVALS.ONE_MONTH) ?? []
+    this.candles[INTERVALS.ONE_DAY] = (await this.databaseService.getCandles(Exchange.BINANCE, this.BASE_SYMBOL, INTERVALS.ONE_DAY)) ?? []
+    this.candles[INTERVALS.ONE_WEEK] = (await this.databaseService.getCandles(Exchange.BINANCE, this.BASE_SYMBOL, INTERVALS.ONE_WEEK)) ?? []
+    this.candles[INTERVALS.ONE_MONTH] = (await this.databaseService.getCandles(Exchange.BINANCE, this.BASE_SYMBOL, INTERVALS.ONE_MONTH)) ?? []
   }
 
   private printDebug(): void {
@@ -114,16 +123,24 @@ export class BackfillService {
             candle.didPersistToStore = true
           }
         }
-
-        // Clear all items for one minute because it can grow too large = (1440 items for one file)
-        if (interval === INTERVALS.ONE_MINUTE) {
-          this.candles[interval] = []
-        }
-
         // TODO: Check whether the candles were saved. Handle ones that aren't saved
       }
     }
     console.timeEnd('Saving data completed')
+  }
+
+  /** Clear after each file is processed and saved, otherwise the heap size would grow too large. Don't clear 1d, 1w, 1M */
+  private clearCandles(): void {
+    this.candles[INTERVALS.ONE_MINUTE] = []
+    this.candles[INTERVALS.FIVE_MINUTES] = []
+    this.candles[INTERVALS.FIFTEEN_MINUTES] = []
+    this.candles[INTERVALS.THIRTY_MINUTES] = []
+    this.candles[INTERVALS.ONE_HOUR] = []
+    this.candles[INTERVALS.TWO_HOURS] = []
+    this.candles[INTERVALS.FOUR_HOURS] = []
+    this.candles[INTERVALS.SIX_HOURS] = []
+    this.candles[INTERVALS.EIGHT_HOURS] = []
+    this.candles[INTERVALS.TWELVE_HOURS] = []
   }
 
   async getStoredFirstAndLastTimestamps(symbol: string) {
@@ -268,6 +285,7 @@ export class BackfillService {
 
         this.logger.log(`Downloaded and parsed file for ${dateString}`)
         await this.saveData() // Clear up memory by saving & removing the 1440 1m candles for this file
+        this.clearCandles()
       } catch (error) {
         this.logger.error(`Failed to download or process the file for ${dateString}:`, error)
       }
