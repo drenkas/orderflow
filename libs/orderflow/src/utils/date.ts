@@ -52,16 +52,10 @@ export function adjustBackfillStartDate(processedTimestamps: { [interval: string
   if (timestamps.length > 0) {
     const latestTimestamp = Math.max(...timestamps)
     latestLast = Math.max(latestTimestamp, latestLast)
+    latestLast -= 24 * 60 * 60 * 1000 // Subtract one day
   }
 
-  // Find the difference in days and add it to originalStartDate
-  const originalStartAtMidnight = new Date(originalStartDate)
-  originalStartAtMidnight.setHours(0, 0, 0, 0) // Ensure we're starting at the beginning of the day
-
-  const dayDifference = Math.floor((latestLast - originalStartAtMidnight.getTime()) / (24 * 60 * 60 * 1000))
-  const adjustedStartDate = new Date(originalStartAtMidnight)
-  adjustedStartDate.setDate(originalStartAtMidnight.getDate() + dayDifference)
-
+  const adjustedStartDate = new Date(latestLast)
   return adjustedStartDate
 }
 
