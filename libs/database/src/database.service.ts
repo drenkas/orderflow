@@ -141,4 +141,48 @@ export class DatabaseService {
       return {}
     }
   }
+
+  async findGapsInData(exchange: string, symbol: string, interval: string, timeGapInMilliseconds: number): Promise<any[]> {
+    const query = `
+      WITH OrderedCandles AS (
+        SELECT
+          id,
+          "openTime",
+          LAG("openTime") OVER (PARTITION BY exchange, symbol, interval ORDER BY "openTime") as prevOpenTime
+        FROM
+          footprint_candle
+        WHERE
+          exchange = $1
+          AND symbol = $2
+          AND interval = $3
+      ),
+      Gaps AS (
+        SELECT
+          id,
+          "openTime",
+          prevOpenTime,
+          EXTRACT(EPOCH FROM ("openTime" - prevOpenTime)) * 1000 as timeDifference -- Convert interval to milliseconds
+        FROM
+          OrderedCandles
+        WHERE
+          prevOpenTime IS NOT NULL -- Exclude the first row which has no previous row
+      )
+      SELECT
+        id,
+        "openTime",
+        prevOpenTime,
+        timeDifference
+      FROM
+        Gaps
+      WHERE
+        timeDifference > $4; -- The gap is larger than specified time gap in milliseconds
+    `
+
+    try {
+      return await this.footprintCandleRepository.query(query, [exchange, symbol, interval, timeGapInMilliseconds])
+    } catch (error) {
+      this.logger.error('Error finding gaps in data:', error)
+      throw error
+    }
+  }
 }

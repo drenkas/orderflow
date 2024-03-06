@@ -51,6 +51,8 @@ export class BackfillService {
     console.time(`Backfilling for ${this.BASE_SYMBOL} took`)
     this.logger.log('start backfilling')
 
+    // await this.checkForGaps()
+
     this.setupTradeAggregator()
 
     await this.getStoredFirstAndLastTimestamps(this.BASE_SYMBOL)
@@ -86,6 +88,18 @@ export class BackfillService {
     this.aggregators[this.BASE_SYMBOL] = new OrderFlowAggregator(Exchange.BINANCE, this.BASE_SYMBOL, INTERVALS.ONE_MINUTE, intervalSizeMs, {
       maxCacheInMemory: maxRowsInMemory
     })
+  }
+
+  private async checkForGaps(): Promise<void> {
+    for (const interval of Object.keys(this.candles)) {
+      const gaps = await this.databaseService.findGapsInData(
+        Exchange.BINANCE,
+        this.BASE_SYMBOL,
+        interval,
+        KlineIntervalMs[interval]
+      )
+      console.log(`${interval}:`, gaps.length > 10 ? `${gaps.length} gaps` : gaps)
+    }
   }
 
   private async populateHTFStoredCandles(): Promise<void> {
