@@ -51,7 +51,7 @@ export class BackfillService {
     console.time(`Backfilling for ${this.BASE_SYMBOL} took`)
     this.logger.log('start backfilling')
 
-    // await this.checkForGaps()
+    await this.checkForGaps()
 
     this.setupTradeAggregator()
 
@@ -92,13 +92,17 @@ export class BackfillService {
 
   private async checkForGaps(): Promise<void> {
     for (const interval of Object.keys(this.candles)) {
-      const gaps = await this.databaseService.findGapsInData(
-        Exchange.BINANCE,
-        this.BASE_SYMBOL,
-        interval,
-        KlineIntervalMs[interval]
-      )
-      console.log(`${interval}:`, gaps.length > 10 ? `${gaps.length} gaps` : gaps)
+      const gaps = await this.databaseService.findGapsInData(Exchange.BINANCE, this.BASE_SYMBOL, interval, KlineIntervalMs[interval])
+      // Log the number of gaps
+      console.log(`${interval}: Total Gaps - ${gaps.length}`)
+
+      // Only print the gap details when there are fewer than 10 gaps
+      if (gaps.length < 10) {
+        console.log(`${interval}: Gap Details -`, gaps)
+      }
+
+      // Add a visual separator after each interval's output
+      console.log('--------------------------------------------------')
     }
   }
 
