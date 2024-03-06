@@ -26,7 +26,7 @@ export class OrderFlowAggregator {
   private candleQueue: IFootPrintClosedCandle[] = []
 
   /** Used for backtesting in replace of getStartOfMinute()  */
-  private currMinute: Date | null = null
+  private currMinute: number | null = null
 
   constructor(
     exchange: string,
@@ -46,7 +46,7 @@ export class OrderFlowAggregator {
     }
   }
 
-  public setCurrMinute(currMinute: Date): void {
+  public setCurrMinute(currMinute: number): void {
     this.currMinute = currMinute
   }
 
@@ -140,7 +140,7 @@ export class OrderFlowAggregator {
     symbol: string,
     interval: string,
     intervalSizeMs: number,
-    startDate: Date = this.currMinute ?? getStartOfMinute()
+    startDate: Date = this.currMinute ? new Date(this.currMinute) : getStartOfMinute()
   ) {
     const closeTimeMs = startDate.getTime() + intervalSizeMs - 1
 

@@ -34,41 +34,52 @@ export function getNewestDate(arrayOfDates: Date[]): Date {
 }
 
 export function calculateStartDate(startAt: string) {
-  // Convert the startAt string to a number and then to a Date object
+  // Convert the startAt string to a number
   const timestamp = Number(startAt)
-  const date = new Date(timestamp)
 
-  date.setHours(0, 0, 0, 0) // Start of day at 00:00
+  // Convert seconds to milliseconds by multiplying by 1000
+  const dayInMilliseconds = 24 * 60 * 60 * 1000 // Number of milliseconds in a day
 
-  return date
+  // Calculate the start of the day in UTC
+  // Subtract the remainder when dividing the timestamp by the number of milliseconds in a day
+  // This aligns the time to 00:00:00 UTC on the same day
+  const startOfDayTimestamp = timestamp - (timestamp % dayInMilliseconds)
+
+  return startOfDayTimestamp
 }
 
-export function adjustBackfillStartDate(processedTimestamps: { [interval: string]: { first: number; last: number } }, originalStartDate: Date) {
-  const timestamps: number[] = Object.values(processedTimestamps)
+export function adjustBackfillStartDate(processedTimestamps: { [interval: string]: { first: number; last: number } }, originalStartDate: number) {
+  const timestamps = Object.values(processedTimestamps)
     .map((ts) => ts.last)
     .filter((t) => t != null)
 
-  let latestLast = originalStartDate.getTime()
-  if (timestamps.length > 0) {
-    const latestTimestamp = Math.max(...timestamps)
-    latestLast = Math.max(latestTimestamp, latestLast)
-    latestLast -= 24 * 60 * 60 * 1000 // Subtract one day
-  }
+  // Find the latest timestamp or use the original start date in milliseconds
+  let latestLast = Math.max(...timestamps, originalStartDate)
 
-  const adjustedStartDate = new Date(latestLast)
-  return adjustedStartDate
+  // Subtract one day in milliseconds
+  latestLast -= 24 * 60 * 60 * 1000
+
+  // Adjust to start of the day in UTC
+  latestLast -= latestLast % (24 * 60 * 60 * 1000)
+
+  // No need to convert back to Date, latestLast is the adjusted timestamp
+  return latestLast
 }
 
-export function adjustBackfillEndDate(processedTimestamps: { [interval: string]: { first: number; last: number } }, originalEndDate: Date) {
+export function adjustBackfillEndDate(processedTimestamps: { [interval: string]: { first: number; last: number } }, originalEndDate: number) {
   const timestamps: number[] = Object.values(processedTimestamps)
     .map((ts) => ts.first)
     .filter((t) => t != null)
-  const earliestFirst: number = Math.max(...timestamps, originalEndDate.getTime())
 
-  const earliestFirstDate: Date = new Date(earliestFirst)
-  earliestFirstDate.setHours(0, 0, 0, 0)
+  // Use Math.max to find the latest timestamp or the originalEndDate as milliseconds
+  const earliestFirst: number = Math.max(...timestamps, originalEndDate)
 
-  return earliestFirstDate
+  // Align to the start of the day in UTC
+  const dayInMilliseconds = 24 * 60 * 60 * 1000 // Number of milliseconds in a day
+  const adjustedEndDate = earliestFirst - (earliestFirst % dayInMilliseconds)
+
+  // Return the adjusted Unix timestamp for the start of the day
+  return adjustedEndDate
 }
 
 export const alignsWithTargetInterval = (targetInterval: INTERVALS, date: Date) => {

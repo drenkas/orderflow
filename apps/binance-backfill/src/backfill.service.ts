@@ -19,8 +19,8 @@ export class BackfillService {
   private readonly baseUrl = 'https://data.binance.vision/data/futures/um/daily/aggTrades'
   private readonly exchange: Exchange = Exchange.BINANCE
   private readonly BASE_INTERVAL = INTERVALS.ONE_MINUTE
-  private currTestTime: Date = new Date()
-  private nextMinuteCandleClose: Date = new Date()
+  private currTestTime: number = new Date().getTime()
+  private nextMinuteCandleClose: number = new Date().getTime()
 
   protected symbols: string[] = process.env.SYMBOLS ? process.env.SYMBOLS.split(',') : ['BTCUSDT']
   private readonly BASE_SYMBOL = this.symbols.shift() as string
@@ -56,7 +56,47 @@ export class BackfillService {
     this.setupTradeAggregator()
 
     await this.getStoredFirstAndLastTimestamps(this.BASE_SYMBOL)
+    this.logStoredTimestampsRange()
 
+    // We need to populate 1D, 1W, 1M to build HTF candles
+    await this.populateHTFStoredCandles()
+
+    await this.downloadAndProcessCsvFiles()
+    // this.logFirstAndLastCandles()
+    console.timeEnd(`Backfilling for ${this.BASE_SYMBOL} took`)
+  }
+
+  private setupTradeAggregator(): void {
+    const maxRowsInMemory = CACHE_LIMIT
+    const intervalSizeMs: number = KlineIntervalMs[INTERVALS.ONE_MINUTE]
+    this.aggregators[this.BASE_SYMBOL] = new OrderFlowAggregator(Exchange.BINANCE, this.BASE_SYMBOL, INTERVALS.ONE_MINUTE, intervalSizeMs, {
+      maxCacheInMemory: maxRowsInMemory
+    })
+  }
+
+  private async checkForGaps(): Promise<void> {
+    for (const interval of Object.keys(this.candles)) {
+      const gaps = await this.databaseService.findGapsInData(Exchange.BINANCE, this.BASE_SYMBOL, interval, KlineIntervalMs[interval])
+      // Log the number of gaps
+      this.logger.log(`${interval}: Total Gaps - ${gaps.length}`)
+
+      // Only print the gap details when there are fewer than 10 gaps
+      if (gaps.length < 10) {
+        this.logger.log(`${interval}: Gap Details -`, gaps)
+      }
+
+      // Add a visual separator after each interval's output
+      this.logger.log('--------------------------------------------------')
+    }
+  }
+
+  private async populateHTFStoredCandles(): Promise<void> {
+    this.candles[INTERVALS.ONE_DAY] = (await this.databaseService.getCandles(Exchange.BINANCE, this.BASE_SYMBOL, INTERVALS.ONE_DAY)) ?? []
+    this.candles[INTERVALS.ONE_WEEK] = (await this.databaseService.getCandles(Exchange.BINANCE, this.BASE_SYMBOL, INTERVALS.ONE_WEEK)) ?? []
+    this.candles[INTERVALS.ONE_MONTH] = (await this.databaseService.getCandles(Exchange.BINANCE, this.BASE_SYMBOL, INTERVALS.ONE_MONTH)) ?? []
+  }
+
+  private logStoredTimestampsRange(): void {
     const earliestTimestamp = Math.min(...Object.values(this.timestampsRange[this.BASE_SYMBOL]).map((range) => range.first))
     const latestTimestamp = Math.max(...Object.values(this.timestampsRange[this.BASE_SYMBOL]).map((range) => range.last))
 
@@ -73,46 +113,9 @@ export class BackfillService {
       )
     }
     this.logger.log('==========================================================')
-
-    // We need to populate 1D, 1W, 1M to build HTF candles
-    await this.populateHTFStoredCandles()
-
-    await this.downloadAndProcessCsvFiles()
-    this.printDebug()
-    console.timeEnd(`Backfilling for ${this.BASE_SYMBOL} took`)
   }
 
-  private setupTradeAggregator(): void {
-    const maxRowsInMemory = CACHE_LIMIT
-    const intervalSizeMs: number = KlineIntervalMs[INTERVALS.ONE_MINUTE]
-    this.aggregators[this.BASE_SYMBOL] = new OrderFlowAggregator(Exchange.BINANCE, this.BASE_SYMBOL, INTERVALS.ONE_MINUTE, intervalSizeMs, {
-      maxCacheInMemory: maxRowsInMemory
-    })
-  }
-
-  private async checkForGaps(): Promise<void> {
-    for (const interval of Object.keys(this.candles)) {
-      const gaps = await this.databaseService.findGapsInData(Exchange.BINANCE, this.BASE_SYMBOL, interval, KlineIntervalMs[interval])
-      // Log the number of gaps
-      console.log(`${interval}: Total Gaps - ${gaps.length}`)
-
-      // Only print the gap details when there are fewer than 10 gaps
-      if (gaps.length < 10) {
-        console.log(`${interval}: Gap Details -`, gaps)
-      }
-
-      // Add a visual separator after each interval's output
-      console.log('--------------------------------------------------')
-    }
-  }
-
-  private async populateHTFStoredCandles(): Promise<void> {
-    this.candles[INTERVALS.ONE_DAY] = (await this.databaseService.getCandles(Exchange.BINANCE, this.BASE_SYMBOL, INTERVALS.ONE_DAY)) ?? []
-    this.candles[INTERVALS.ONE_WEEK] = (await this.databaseService.getCandles(Exchange.BINANCE, this.BASE_SYMBOL, INTERVALS.ONE_WEEK)) ?? []
-    this.candles[INTERVALS.ONE_MONTH] = (await this.databaseService.getCandles(Exchange.BINANCE, this.BASE_SYMBOL, INTERVALS.ONE_MONTH)) ?? []
-  }
-
-  private printDebug(): void {
+  private logFirstAndLastCandles(): void {
     Object.keys(this.candles).forEach((interval: INTERVALS) => {
       this.logger.log(`${interval} has ${this.candles[interval].length} candles`)
       this.logger.log(`${interval} first open candle ${this.candles[interval]?.[0]?.openTime}`)
@@ -177,7 +180,7 @@ export class BackfillService {
   private checkAndBuildLargerTimeframeCandles(baseInterval: INTERVALS, targetInterval: INTERVALS, value: IFootPrintClosedCandle) {
     const rules = CANDLE_BUILDER_RULES[baseInterval]
     const targetRule = rules?.find((rule) => rule.target === targetInterval) ?? rules?.[0]
-    const openTime: Date = new Date(value.openTimeMs)
+    let openTime: number = value.openTimeMs
     const { amount, duration } = KlineIntervalTimes[baseInterval]
 
     if (!targetRule) {
@@ -185,9 +188,10 @@ export class BackfillService {
     }
 
     if (duration === 'minutes') {
-      openTime.setMinutes(openTime.getMinutes() + amount, 0, 0)
+      openTime += amount * 60 * 1000 // 60 seconds * 1000 ms
     } else if (duration === 'h') {
-      openTime.setHours(openTime.getHours() + amount, 0, 0)
+      // Convert 'amount' from hours to milliseconds
+      openTime += amount * 60 * 60 * 1000 // 60 minutes * 60 seconds * 1000 ms
     }
 
     if (targetRule?.condition(openTime)) {
@@ -233,8 +237,8 @@ export class BackfillService {
   }
 
   private incrementTestMinute(): void {
-    this.currTestTime = new Date(this.nextMinuteCandleClose)
-    this.nextMinuteCandleClose = new Date(this.nextMinuteCandleClose.getTime() + 60 * 1000)
+    this.currTestTime = this.nextMinuteCandleClose
+    this.nextMinuteCandleClose = this.nextMinuteCandleClose + 60 * 1000
     this.aggregators[this.BASE_SYMBOL].setCurrMinute(this.currTestTime)
   }
 
@@ -250,19 +254,20 @@ export class BackfillService {
     this.logger.log(`Adjusted backfillStartAt: ${backfillStartAt}`)
     this.logger.log(`Adjusted backfillEndAt: ${backfillEndAt}`)
     this.logger.log('============================================')
-    let currentTestDate = new Date(backfillStartAt)
+    let currentTestDate = backfillStartAt
 
     console.time(`Downloading and processing aggTrades ${backfillStartAt} - ${backfillEndAt}`)
 
-    this.currTestTime = new Date(backfillStartAt)
-    this.nextMinuteCandleClose = new Date(this.currTestTime.getTime() + 60000)
+    this.currTestTime = backfillStartAt
+    this.nextMinuteCandleClose = this.currTestTime + 60 * 1000
     this.aggregators[this.BASE_SYMBOL].setCurrMinute(this.currTestTime)
 
     this.logger.log(`currTestTime: ${this.currTestTime}`)
     this.logger.log(`nextMinuteCandleClose: ${this.nextMinuteCandleClose}`)
 
     while (currentTestDate <= backfillEndAt) {
-      const dateString = currentTestDate.toISOString().split('T')[0]
+      const date = new Date(currentTestDate)
+      const dateString = date.toISOString().split('T')[0]
       const fileUrl = `${this.baseUrl}/${this.BASE_SYMBOL}/${this.BASE_SYMBOL}-aggTrades-${dateString}.zip`
 
       try {
@@ -292,9 +297,8 @@ export class BackfillService {
         for (let i = 0; i < trades.length; i++) {
           const trade: IAggregatedTrade = trades[i]
           const transactTimestamp: number = Number(trade.transact_time)
-          const tradeTime = new Date(transactTimestamp)
 
-          if (tradeTime >= this.nextMinuteCandleClose || i === trades.length - 1) {
+          if (transactTimestamp >= this.nextMinuteCandleClose || i === trades.length - 1) {
             await this.closeAndPrepareNextCandle()
           }
           this.processTradeRow(trade)
@@ -302,13 +306,15 @@ export class BackfillService {
         console.timeEnd('Processing trades')
 
         this.logger.log(`Downloaded and parsed file for ${dateString}`)
-        await this.saveData() // Clear up memory by saving & removing the 1440 1m candles for this file
+
+        // Clear up memory by saving & removing candles in memory
+        await this.saveData()
         this.clearCandles()
       } catch (error) {
         this.logger.error(`Failed to download or process the file for ${dateString}:`, error)
       }
 
-      currentTestDate = new Date(currentTestDate.setDate(currentTestDate.getDate() + 1))
+      currentTestDate += 24 * 60 * 60 * 1000
     }
     console.timeEnd(`Downloading and processing aggTrades ${backfillStartAt} - ${backfillEndAt}`)
   }
