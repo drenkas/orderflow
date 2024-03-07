@@ -8,7 +8,7 @@ import { CANDLE_BUILDER_RULES } from '@orderflow/constants'
 import { IAggregatedTrade } from '@orderflow/dto/binanceData.dto'
 import { IFootPrintClosedCandle } from '@orderflow/dto/orderflow.dto'
 import { calculateCandlesNeeded } from '@orderflow/utils/candles'
-import { adjustBackfillEndDate, adjustBackfillStartDate, calculateStartDate } from '@orderflow/utils/date'
+import { adjustBackfillEndDate, adjustBackfillStartDate, getTimestampStartOfDay } from '@orderflow/utils/date'
 import { OrderFlowAggregator } from '@orderflow/utils/orderFlowAggregator'
 import { mergeFootPrintCandles } from '@orderflow/utils/orderFlowUtil'
 import { CACHE_LIMIT, Exchange, INTERVALS, KlineIntervalMs, KlineIntervalTimes } from '@tsquant/exchangeapi/dist/lib/constants'
@@ -19,7 +19,7 @@ export class BackfillService {
   private readonly baseUrl = 'https://data.binance.vision/data/futures/um/daily/aggTrades'
   private readonly exchange: Exchange = Exchange.BINANCE
   private readonly BASE_INTERVAL = INTERVALS.ONE_MINUTE
-  private currTestTime: number = new Date().getTime()
+  private currTestMinute: number = new Date().getTime()
   private nextMinuteCandleClose: number = new Date().getTime()
 
   protected symbols: string[] = process.env.SYMBOLS ? process.env.SYMBOLS.split(',') : ['BTCUSDT']
@@ -237,20 +237,20 @@ export class BackfillService {
   }
 
   private incrementTestMinute(): void {
-    this.currTestTime = this.nextMinuteCandleClose
+    this.currTestMinute = this.nextMinuteCandleClose
     this.nextMinuteCandleClose = this.nextMinuteCandleClose + 60 * 1000
-    this.aggregators[this.BASE_SYMBOL].setCurrMinute(this.currTestTime)
+    this.aggregators[this.BASE_SYMBOL].setCurrMinute(this.currTestMinute)
   }
 
   private async downloadAndProcessCsvFiles() {
-    const selectedBackfillStartAt = calculateStartDate(process.env.BACKFILL_START_AT as string)
-    const selectedBackfillEndAt = calculateStartDate(process.env.BACKFILL_END_AT as string)
+    const selectedBackfillStartAt = getTimestampStartOfDay(process.env.BACKFILL_START_AT as string)
+    const selectedBackfillEndAt = getTimestampStartOfDay(process.env.BACKFILL_END_AT as string)
     this.logger.log('========== Backfill Time Selection ==========')
     this.logger.log(`Selected backfillStartAt ${selectedBackfillStartAt}`)
     this.logger.log(`Selected backfillEndAt: ${selectedBackfillEndAt}`)
 
-    const backfillStartAt = adjustBackfillStartDate(this.timestampsRange[this.BASE_SYMBOL], calculateStartDate(process.env.BACKFILL_START_AT as string))
-    const backfillEndAt = adjustBackfillEndDate(this.timestampsRange[this.BASE_SYMBOL], calculateStartDate(process.env.BACKFILL_END_AT as string))
+    const backfillStartAt = adjustBackfillStartDate(this.timestampsRange[this.BASE_SYMBOL], getTimestampStartOfDay(process.env.BACKFILL_START_AT as string))
+    const backfillEndAt = adjustBackfillEndDate(this.timestampsRange[this.BASE_SYMBOL], getTimestampStartOfDay(process.env.BACKFILL_END_AT as string))
     this.logger.log(`Adjusted backfillStartAt: ${backfillStartAt}`)
     this.logger.log(`Adjusted backfillEndAt: ${backfillEndAt}`)
     this.logger.log('============================================')
@@ -258,11 +258,11 @@ export class BackfillService {
 
     console.time(`Downloading and processing aggTrades ${backfillStartAt} - ${backfillEndAt}`)
 
-    this.currTestTime = backfillStartAt
-    this.nextMinuteCandleClose = this.currTestTime + 60 * 1000
-    this.aggregators[this.BASE_SYMBOL].setCurrMinute(this.currTestTime)
+    this.currTestMinute = backfillStartAt
+    this.nextMinuteCandleClose = this.currTestMinute + 60 * 1000
+    this.aggregators[this.BASE_SYMBOL].setCurrMinute(this.currTestMinute)
 
-    this.logger.log(`currTestTime: ${this.currTestTime}`)
+    this.logger.log(`currTestMinute: ${this.currTestMinute}`)
     this.logger.log(`nextMinuteCandleClose: ${this.nextMinuteCandleClose}`)
 
     while (currentTestDate <= backfillEndAt) {

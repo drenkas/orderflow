@@ -33,11 +33,9 @@ export function getNewestDate(arrayOfDates: Date[]): Date {
   return arrayOfDates.reduce((c, n) => (n > c ? n : c))
 }
 
-export function calculateStartDate(startAt: string) {
-  // Convert the startAt string to a number
+export function getTimestampStartOfDay(startAt: string) {
   const timestamp = Number(startAt)
 
-  // Convert seconds to milliseconds by multiplying by 1000
   const dayInMilliseconds = 24 * 60 * 60 * 1000 // Number of milliseconds in a day
 
   // Calculate the start of the day in UTC
