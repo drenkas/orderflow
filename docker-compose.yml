@@ -1,21 +1,5 @@
 version: '3.8'
 services:
-  api:
-    restart: always
-    build:
-      context: .
-      dockerfile: ./apps/api/Dockerfile
-    environment:
-      - DB_HOST=host.docker.internal
-      - DB_PORT=5433
-      - DB_USERNAME=postgres
-      - DB_PASSWORD=password
-      - DB_NAME=postgres
-    extra_hosts:
-      - 'host.docker.internal:host-gateway'
-    entrypoint: ['node', 'dist/main.js']
-    ports:
-      - 5000:3000
   binance:
     restart: always
     build:
@@ -31,12 +15,28 @@ services:
       - 'host.docker.internal:host-gateway'
     entrypoint: ['node', 'dist/main.js']
     ports:
-      - 5001:3000
+      - 5000:3000
   bybit:
     restart: always
     build:
       context: .
       dockerfile: ./apps/bybit/Dockerfile
+    environment:
+      - DB_HOST=host.docker.internal
+      - DB_PORT=5433
+      - DB_USERNAME=postgres
+      - DB_PASSWORD=password
+      - DB_NAME=postgres
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    entrypoint: ['node', 'dist/main.js']
+    ports:
+      - 5001:3000
+  api:
+    restart: always
+    build:
+      context: .
+      dockerfile: ./apps/api/Dockerfile
     environment:
       - DB_HOST=host.docker.internal
       - DB_PORT=5433
