@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import { Injectable, Logger } from '@nestjs/common'
 import { InjectRepository } from '@nestjs/typeorm'
 import { FindManyOptions, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm'
@@ -38,17 +37,6 @@ export class DatabaseService {
       console.error('Error bulk inserting FootPrintCandles:', error)
     }
     return saved
-  }
-
-  async getTestCandles(): Promise<FootPrintCandle[]> {
-    const query = this.footprintCandleRepository.createQueryBuilder('candle').select('*').where('candle.id IN (1,2,3,4)')
-
-    try {
-      return await query.getRawMany()
-    } catch (error) {
-      console.error('Error getTestCandles', error)
-      throw error
-    }
   }
 
   async getCandles(exchange: string, symbol: string, interval: string, openTime?: Date, closeTime?: Date): Promise<IFootPrintClosedCandle[]> {

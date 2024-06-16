@@ -19,7 +19,7 @@ const isMinuteMultipleOfFive = isMultipleOf(5)
 export class BinanceService {
   private logger: Logger = new Logger(BinanceService.name)
   private symbols: string[] = ['BTCUSDT']
-  private readonly BASE_INTERVAL = '1m'
+  private readonly BASE_INTERVAL = INTERVALS.ONE_MINUTE
   private readonly LARGER_AGGREGATION_INTERVALS = [
     INTERVALS.FIVE_MINUTES,
     INTERVALS.FIFTEEN_MINUTES,
