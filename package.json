@@ -91,7 +91,8 @@
     ],
     "moduleNameMapper": {
       "^@database/database(|/.*)$": "<rootDir>/libs/database/src/$1",
-      "^@orderflow/orderflow(|/.*)$": "<rootDir>/libs/orderflow/src/$1"
+      "^@orderflow/orderflow(|/.*)$": "<rootDir>/libs/orderflow/src/$1",
+      "^@shared(|/.*)$": "<rootDir>/libs/shared/src/$1"
     }
   }
 }

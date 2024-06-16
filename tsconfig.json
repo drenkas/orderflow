@@ -35,6 +35,12 @@
       ],
       "@orderflow/*": [
         "libs/orderflow/src/*"
+      ],
+      "@shared": [
+        "libs/shared/src"
+      ],
+      "@shared/*": [
+        "libs/shared/src/*"
       ]
     }
   }
