@@ -160,9 +160,11 @@ export class OrderFlowAggregator {
     this.activeCandle = candle
   }
 
-  public processCandleClosed(newCandleStartDate?: Date) {
-    this.retireActiveCandle()
+  public processCandleClosed(newCandleStartDate?: Date): IFootPrintClosedCandle | undefined {
+    const candle = this.retireActiveCandle()
     this.createNewCandle(this.exchange, this.symbol, this.interval, this.intervalSizeMs, newCandleStartDate)
+
+    return candle
   }
 
   public processNewTrades(isBuyerMaker: boolean, assetQty: number, price: number) {
