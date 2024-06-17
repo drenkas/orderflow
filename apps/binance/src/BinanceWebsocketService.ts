@@ -1,17 +1,33 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-empty-function */
 import { Injectable } from '@nestjs/common'
 import { Observable, Subject } from 'rxjs'
-import { WebsocketClient, WsMessageAggTradeRaw } from 'binance'
+import { DefaultLogger, WebsocketClient, WsMessageAggTradeRaw } from 'binance'
 import { ExchangeAPI, getExchangeLayer } from '@tsquant/exchangeapi'
+
+/** Disable almost all internal logging from the binance ws lib */
+const logger = {
+  ...DefaultLogger,
+  silly: (..._params) => {},
+  debug: (..._params) => {},
+  notice: (..._params) => {},
+  info: (..._params) => {}
+}
 
 @Injectable()
 export class BinanceWebSocketService {
   private ws: WebsocketClient
   private exchangeAPI: ExchangeAPI
   private tradeUpdates$: Subject<WsMessageAggTradeRaw> = new Subject()
+  private reconnect$: Subject<string> = new Subject()
   private connected$: Subject<string> = new Subject()
 
   constructor() {
     this.initWebSocket()
+  }
+
+  get reconnected(): Observable<string> {
+    return this.reconnect$.asObservable()
   }
 
   get connected(): Observable<string> {
@@ -23,7 +39,7 @@ export class BinanceWebSocketService {
   }
 
   private initWebSocket(): void {
-    this.ws = new WebsocketClient({})
+    this.ws = new WebsocketClient({ pongTimeout: 1000 * 30 }, logger)
     this.exchangeAPI = getExchangeLayer({
       accountId: 'doesntMatter',
       exchange: 'paper_binance',
@@ -53,6 +69,7 @@ export class BinanceWebSocketService {
 
     this.ws.on('reconnected', (data) => {
       console.log('ws has reconnected ', data?.wsKey)
+      this.reconnect$.next(data.wsKey)
     })
 
     this.ws.on('error', (data) => {

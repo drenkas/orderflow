@@ -20,7 +20,7 @@ export class OrderFlowAggregator {
   config: OrderFlowAggregatorConfig
 
   /** Candle currently building (still open) */
-  private activeCandle: IFootPrintCandle | undefined
+  private activeCandle: IFootPrintCandle | null = null
 
   /** Queue of candles that may not yet have reached the DB yet (closed candles) */
   private candleQueue: IFootPrintClosedCandle[] = []
@@ -28,13 +28,7 @@ export class OrderFlowAggregator {
   /** Used for backtesting in replace of getStartOfMinute()  */
   private currMinute: number | null = null
 
-  constructor(
-    exchange: string,
-    symbol: string,
-    interval: string,
-    intervalSizeMs: number,
-    config?: Partial<OrderFlowAggregatorConfig>
-  ) {
+  constructor(exchange: string, symbol: string, interval: string, intervalSizeMs: number, config?: Partial<OrderFlowAggregatorConfig>) {
     this.exchange = exchange
     this.symbol = symbol
     this.interval = interval
@@ -88,9 +82,7 @@ export class OrderFlowAggregator {
     // Trim store to last x candles, based on config
     const rowsToTrim = this.candleQueue.length - MAX_QUEUE_LENGTH
 
-    console.log(
-      `removing ${rowsToTrim} candles from aggregator queue. Length before: ${this.candleQueue.length}`
-    )
+    console.log(`removing ${rowsToTrim} candles from aggregator queue. Length before: ${this.candleQueue.length}`)
     this.candleQueue.splice(0, rowsToTrim)
     console.log(`len after: ${this.candleQueue.length}`)
   }
@@ -130,7 +122,7 @@ export class OrderFlowAggregator {
     }
 
     this.candleQueue.push(closedCandle)
-    delete this.activeCandle
+    this.activeCandle = null
 
     return closedCandle
   }
@@ -143,13 +135,14 @@ export class OrderFlowAggregator {
     startDate: Date = this.currMinute ? new Date(this.currMinute) : getStartOfMinute()
   ) {
     const closeTimeMs = startDate.getTime() + intervalSizeMs - 1
+    const closeTime = new Date(closeTimeMs).toISOString()
 
     const candle: IFootPrintCandle = {
       uuid: crypto.randomUUID(),
       openTime: startDate.toISOString(),
       openTimeMs: startDate.getTime(),
-      closeTime: new Date(closeTimeMs).toISOString(),
-      closeTimeMs: closeTimeMs,
+      closeTime,
+      closeTimeMs,
       symbol: symbol,
       exchange: exchange,
       interval: interval,
@@ -191,9 +184,7 @@ export class OrderFlowAggregator {
     // Update delta
     this.activeCandle.volumeDelta += deltaChange
 
-    const precisionTrimmedPrice = this.config.pricePrecisionDp
-      ? +price.toFixed(this.config.pricePrecisionDp)
-      : price
+    const precisionTrimmedPrice = this.config.pricePrecisionDp ? +price.toFixed(this.config.pricePrecisionDp) : price
 
     // Initialise the price level, if it doesn't exist yet
     // TODO: do price step size rounding here
@@ -215,12 +206,9 @@ export class OrderFlowAggregator {
     }
 
     // Update high and low
-    this.activeCandle.high = this.activeCandle.high
-      ? Math.max(this.activeCandle.high, Number(price))
-      : Number(price)
-    this.activeCandle.low = this.activeCandle.low
-      ? Math.min(this.activeCandle.low, Number(price))
-      : Number(price)
+    const parsedPrice = Number(price)
+    this.activeCandle.high = Math.max(this.activeCandle.high ?? parsedPrice, parsedPrice)
+    this.activeCandle.low = Math.min(this.activeCandle.low ?? parsedPrice, parsedPrice)
     this.activeCandle.close = Number(price)
   }
 }

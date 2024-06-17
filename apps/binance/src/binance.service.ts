@@ -101,35 +101,38 @@ export class BinanceService {
 
   @Cron(CronExpression.EVERY_MINUTE)
   async processMinuteCandleClose() {
-    if (this.didFinishConnectingWS) {
-      for (const symbol in this.aggregators) {
-        const aggr = this.getOrderFlowAggregator(symbol, this.BASE_INTERVAL)
-        aggr.processCandleClosed()
-        await this.persistCandlesToStorage(symbol, this.BASE_INTERVAL)
+    if (!this.didFinishConnectingWS) {
+      return
+    }
+    for (const symbol in this.aggregators) {
+      const aggr = this.getOrderFlowAggregator(symbol, this.BASE_INTERVAL)
+      aggr.processCandleClosed()
+      await this.persistCandlesToStorage(symbol, this.BASE_INTERVAL)
 
-        const aggregationEnd = new Date()
-        aggregationEnd.setMinutes(aggregationEnd.getMinutes() + 1, 0, 0)
-        const closeMinute: number = aggregationEnd.getMinutes()
-        const isCloseMinuteMultipleOfFive: boolean = isMinuteMultipleOfFive(closeMinute)
+      const aggregationEnd = new Date()
+      aggregationEnd.setMinutes(aggregationEnd.getMinutes() + 1, 0, 0)
+      const closeMinute: number = aggregationEnd.getMinutes()
+      const isCloseMinuteMultipleOfFive: boolean = isMinuteMultipleOfFive(closeMinute)
 
-        if (isCloseMinuteMultipleOfFive) {
-          for (const interval of this.LARGER_AGGREGATION_INTERVALS) {
-            await this.updateTimestampRange(symbol, interval)
-            const lastTimestamp = this.timestampsRange[symbol][interval]?.last
+      if (!isCloseMinuteMultipleOfFive) {
+        continue
+      }
 
-            // When this candle closes and when the next one in this interval is expected
-            const closeTimeMS: number = aggregationEnd.getTime()
-            const nextOpenTimeMS: number = lastTimestamp + KlineIntervalMs[interval]
+      for (const interval of this.LARGER_AGGREGATION_INTERVALS) {
+        await this.updateTimestampRange(symbol, interval)
+        const lastTimestamp = this.timestampsRange[symbol][interval]?.last
 
-            if (lastTimestamp && closeTimeMS === nextOpenTimeMS) {
-              const aggregationStart = new Date(lastTimestamp)
-              // Candles already exist in this interval
-              await this.buildAggregatedCandle(symbol, interval, aggregationEnd, aggregationStart)
-            } else if (!lastTimestamp) {
-              // No timestamp for this interval exists means no aggregation has been performed on lower level intervals
-              await this.buildAggregatedCandles(symbol, interval)
-            }
-          }
+        // When this candle closes and when the next one in this interval is expected
+        const closeTimeMS: number = aggregationEnd.getTime()
+        const nextOpenTimeMS: number = lastTimestamp + KlineIntervalMs[interval]
+
+        if (lastTimestamp && closeTimeMS === nextOpenTimeMS) {
+          const aggregationStart = new Date(lastTimestamp)
+          // Candles already exist in this interval
+          await this.buildAggregatedCandle(symbol, interval, aggregationEnd, aggregationStart)
+        } else if (!lastTimestamp) {
+          // No timestamp for this interval exists means no aggregation has been performed on lower level intervals
+          await this.buildAggregatedCandles(symbol, interval)
         }
       }
     }
