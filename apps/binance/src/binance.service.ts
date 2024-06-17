@@ -34,7 +34,7 @@ export class BinanceService {
     INTERVALS.ONE_MONTH
   ]
 
-  private timestampsRange: SymbolIntervalTimestampRangeDictionary = {}
+  // private timestampsRange: SymbolIntervalTimestampRangeDictionary = {}
 
   private expectedConnections: Map<string, Date> = new Map()
   private openConnections: Map<string, Date> = new Map()
@@ -106,25 +106,33 @@ export class BinanceService {
     }
     for (const symbol in this.aggregators) {
       const aggr = this.getOrderFlowAggregator(symbol, this.BASE_INTERVAL)
-      aggr.processCandleClosed()
+      const closedCandle = aggr.processCandleClosed()
+
       await this.persistCandlesToStorage(symbol, this.BASE_INTERVAL)
 
-      const aggregationEnd = new Date()
-      aggregationEnd.setMinutes(aggregationEnd.getMinutes() + 1, 0, 0)
-      const closeMinute: number = aggregationEnd.getMinutes()
-      const isCloseMinuteMultipleOfFive: boolean = isMinuteMultipleOfFive(closeMinute)
-
-      if (!isCloseMinuteMultipleOfFive) {
+      if (!closedCandle) {
         continue
       }
 
+      // const aggregationEnd = new Date()
+      // aggregationEnd.setMinutes(aggregationEnd.getMinutes() + 1, 0, 0)
+      // const closeMinute: number = aggregationEnd.getMinutes()
+      const nextOpenTimeMS = 1 + closedCandle.closeTimeMs
+      const nextOpenTime = new Date(nextOpenTimeMS)
+      const nextOpenTimeMinute = nextOpenTime.getMinutes()
+      // const isCloseMinuteMultipleOfFive: boolean = isMinuteMultipleOfFive(closeMinute)
+
+      // if (!isCloseMinuteMultipleOfFive) {
+      //   continue
+      // }
+
       for (const interval of this.LARGER_AGGREGATION_INTERVALS) {
-        await this.updateTimestampRange(symbol, interval)
-        const lastTimestamp = this.timestampsRange[symbol][interval]?.last
+        // await this.updateTimestampRange(symbol, interval)
+        // const lastTimestamp = this.timestampsRange[symbol][interval]?.last
 
         // When this candle closes and when the next one in this interval is expected
-        const closeTimeMS: number = aggregationEnd.getTime()
-        const nextOpenTimeMS: number = lastTimestamp + KlineIntervalMs[interval]
+        // const closeTimeMS: number = aggregationEnd.getTime()
+        // const nextOpenTimeMS: number = lastTimestamp + KlineIntervalMs[interval]
 
         if (lastTimestamp && closeTimeMS === nextOpenTimeMS) {
           const aggregationStart = new Date(lastTimestamp)
