@@ -226,7 +226,7 @@ export class BackfillService {
     )
 
     this.incrementTestMinute()
-    this.aggregators[this.BASE_SYMBOL].createNewCandle(this.exchange, this.BASE_SYMBOL, this.BASE_INTERVAL, KlineIntervalMs[INTERVALS.ONE_MINUTE])
+    this.aggregators[this.BASE_SYMBOL].createNewCandle()
   }
 
   private processTradeRow(trade: IAggregatedTrade): void {

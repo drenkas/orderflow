@@ -127,25 +127,22 @@ export class OrderFlowAggregator {
     return closedCandle
   }
 
-  public createNewCandle(
-    exchange: string,
-    symbol: string,
-    interval: string,
-    intervalSizeMs: number,
-    startDate: Date = this.currMinute ? new Date(this.currMinute) : getStartOfMinute()
-  ) {
-    const closeTimeMs = startDate.getTime() + intervalSizeMs - 1
+  public createNewCandle() {
+    const startDate: Date = this.currMinute ? new Date(this.currMinute) : getStartOfMinute()
+    const openTimeMs = startDate.getTime()
+    const closeTimeMs = startDate.getTime() + this.intervalSizeMs - 1
+    const openTime = startDate.toISOString()
     const closeTime = new Date(closeTimeMs).toISOString()
 
     const candle: IFootPrintCandle = {
       uuid: crypto.randomUUID(),
-      openTime: startDate.toISOString(),
-      openTimeMs: startDate.getTime(),
+      openTime,
+      openTimeMs,
       closeTime,
       closeTimeMs,
-      symbol: symbol,
-      exchange: exchange,
-      interval: interval,
+      symbol: this.symbol,
+      exchange: this.exchange,
+      interval: this.interval,
       aggressiveBid: 0,
       aggressiveAsk: 0,
       volume: 0,
@@ -160,31 +157,30 @@ export class OrderFlowAggregator {
     this.activeCandle = candle
   }
 
-  public processCandleClosed(newCandleStartDate?: Date): IFootPrintClosedCandle | undefined {
+  public processCandleClosed(): IFootPrintClosedCandle | undefined {
     const candle = this.retireActiveCandle()
-    this.createNewCandle(this.exchange, this.symbol, this.interval, this.intervalSizeMs, newCandleStartDate)
+    this.createNewCandle()
 
     return candle
   }
 
   public processNewTrades(isBuyerMaker: boolean, assetQty: number, price: number) {
     if (!this.activeCandle) {
-      this.createNewCandle(this.exchange, this.symbol, this.interval, this.intervalSizeMs)
+      this.createNewCandle()
       return this.processNewTrades(isBuyerMaker, assetQty, price)
     }
 
-    // const quoteVolume = assetQty * price;
-    const volume = assetQty
+    const tradeQty = assetQty
 
     // TODO: asset qty or notional value or both?
     // https://t.me/c/1819709460/8295/17236
-    this.activeCandle.volume += volume
+    this.activeCandle.volume += tradeQty
 
     // Determine which side (bid/ask) and delta direction based on isBuyerMM
-    const deltaChange = isBuyerMaker ? -volume : volume
+    const tradeQtyDelta = isBuyerMaker ? -tradeQty : tradeQty
 
     // Update delta
-    this.activeCandle.volumeDelta += deltaChange
+    this.activeCandle.volumeDelta += tradeQtyDelta
 
     const precisionTrimmedPrice = this.config.pricePrecisionDp ? +price.toFixed(this.config.pricePrecisionDp) : price
 
@@ -199,18 +195,20 @@ export class OrderFlowAggregator {
 
     // If buyer is maker, buy is a limit order, seller is a market order (low ask), seller is aggressive ask
     if (isBuyerMaker) {
-      this.activeCandle.aggressiveAsk += volume
-      this.activeCandle.priceLevels[precisionTrimmedPrice].volSumAsk += volume
+      this.activeCandle.aggressiveAsk += tradeQty
+      this.activeCandle.priceLevels[precisionTrimmedPrice].volSumAsk += tradeQty
     } else {
       // Else, sell is a limit order, buyer is a market order (high bid), buyer is aggressive bid
-      this.activeCandle.aggressiveBid += volume
-      this.activeCandle.priceLevels[precisionTrimmedPrice].volSumBid += volume
+      this.activeCandle.aggressiveBid += tradeQty
+      this.activeCandle.priceLevels[precisionTrimmedPrice].volSumBid += tradeQty
     }
 
     // Update high and low
-    const parsedPrice = Number(price)
-    this.activeCandle.high = Math.max(this.activeCandle.high ?? parsedPrice, parsedPrice)
-    this.activeCandle.low = Math.min(this.activeCandle.low ?? parsedPrice, parsedPrice)
-    this.activeCandle.close = Number(price)
+    const lastHigh = this.activeCandle.high ?? price
+    const lastLow = this.activeCandle.low ?? price
+
+    this.activeCandle.high = Math.max(lastHigh, price)
+    this.activeCandle.low = Math.min(lastLow, price)
+    this.activeCandle.close = price
   }
 }

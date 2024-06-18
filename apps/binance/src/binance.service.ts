@@ -9,7 +9,6 @@ import { OrderFlowAggregator } from '@orderflow/utils/orderFlowAggregator'
 import { mergeFootPrintCandles } from '@orderflow/utils/orderFlowUtil'
 import { INTERVALS } from '@shared/utils/intervals'
 import { CACHE_LIMIT, Exchange, KlineIntervalMs } from '@tsquant/exchangeapi/dist/lib/constants'
-import { SymbolIntervalTimestampRangeDictionary } from '@tsquant/exchangeapi/dist/lib/types/candles.types'
 import { BinanceWebSocketService } from 'apps/binance/src/BinanceWebsocketService'
 import { numberInString, WsMessageAggTradeRaw } from 'binance'
 
@@ -149,19 +148,6 @@ export class BinanceService {
   @Cron(CronExpression.EVERY_HOUR)
   async handlePrune() {
     await this.databaseService.pruneOldData()
-  }
-
-  async updateTimestampRange(symbol: string, interval: INTERVALS) {
-    if (!this.timestampsRange[symbol]) {
-      this.timestampsRange[symbol] = {}
-    }
-
-    if (!this.timestampsRange[symbol][interval]) {
-      const resultMap = await this.databaseService.getTimestampRange(Exchange.BINANCE, symbol)
-      if (resultMap[symbol]?.[interval]) {
-        this.timestampsRange[symbol][interval] = resultMap[symbol][interval]
-      }
-    }
   }
 
   async buildAggregatedCandle(symbol: string, targetInterval: INTERVALS, aggregationEnd?: Date, aggregationStart?: Date) {
