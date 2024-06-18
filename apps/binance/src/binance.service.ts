@@ -9,7 +9,6 @@ import { OrderFlowAggregator } from '@orderflow/utils/orderFlowAggregator'
 import { mergeFootPrintCandles } from '@orderflow/utils/orderFlowUtil'
 import { INTERVALS } from '@shared/utils/intervals'
 import { CACHE_LIMIT, Exchange, KlineIntervalMs } from '@tsquant/exchangeapi/dist/lib/constants'
-import { SymbolIntervalTimestampRangeDictionary } from '@tsquant/exchangeapi/dist/lib/types/candles.types'
 import { BinanceWebSocketService } from 'apps/binance/src/BinanceWebsocketService'
 import { numberInString, WsMessageAggTradeRaw } from 'binance'
 
@@ -20,7 +19,7 @@ export class BinanceService {
   private logger: Logger = new Logger(BinanceService.name)
   private symbols: string[] = ['BTCUSDT']
   private readonly BASE_INTERVAL = INTERVALS.ONE_MINUTE
-  private readonly LARGER_AGGREGATION_INTERVALS = [
+  private readonly HTF_INTERVALS = [
     INTERVALS.FIVE_MINUTES,
     INTERVALS.FIFTEEN_MINUTES,
     INTERVALS.THIRTY_MINUTES,
@@ -33,8 +32,6 @@ export class BinanceService {
     INTERVALS.ONE_WEEK,
     INTERVALS.ONE_MONTH
   ]
-
-  // private timestampsRange: SymbolIntervalTimestampRangeDictionary = {}
 
   private expectedConnections: Map<string, Date> = new Map()
   private openConnections: Map<string, Date> = new Map()
@@ -126,7 +123,7 @@ export class BinanceService {
       //   continue
       // }
 
-      for (const interval of this.LARGER_AGGREGATION_INTERVALS) {
+      for (const interval of this.HTF_INTERVALS) {
         // await this.updateTimestampRange(symbol, interval)
         // const lastTimestamp = this.timestampsRange[symbol][interval]?.last
 
@@ -149,19 +146,6 @@ export class BinanceService {
   @Cron(CronExpression.EVERY_HOUR)
   async handlePrune() {
     await this.databaseService.pruneOldData()
-  }
-
-  async updateTimestampRange(symbol: string, interval: INTERVALS) {
-    if (!this.timestampsRange[symbol]) {
-      this.timestampsRange[symbol] = {}
-    }
-
-    if (!this.timestampsRange[symbol][interval]) {
-      const resultMap = await this.databaseService.getTimestampRange(Exchange.BINANCE, symbol)
-      if (resultMap[symbol]?.[interval]) {
-        this.timestampsRange[symbol][interval] = resultMap[symbol][interval]
-      }
-    }
   }
 
   async buildAggregatedCandle(symbol: string, targetInterval: INTERVALS, aggregationEnd?: Date, aggregationStart?: Date) {
