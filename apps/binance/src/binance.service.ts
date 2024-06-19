@@ -3,6 +3,7 @@ import { Cron, CronExpression } from '@nestjs/schedule'
 import { aggregationIntervalMap } from '@api/constants'
 import { DatabaseService } from '@database/database.service'
 import { IFootPrintClosedCandle } from '@orderflow/dto/orderflow.dto'
+import { CandleQueue } from '@orderflow/utils/candleQueue'
 import { alignsWithTargetInterval } from '@orderflow/utils/date'
 import { isMultipleOf } from '@orderflow/utils/math'
 import { OrderFlowAggregator } from '@orderflow/utils/orderFlowAggregator'
@@ -43,9 +44,14 @@ export class BinanceService {
   constructor(private readonly databaseService: DatabaseService, private readonly binanceWsService: BinanceWebSocketService) {}
 
   async onModuleInit() {
-    this.logger.log(`Starting binance service (WS etc)`)
+    this.logger.log(`Starting Binance Orderflow service for Live candle building from raw trades`)
 
     await this.subscribeToWS()
+  }
+
+  @Cron(CronExpression.EVERY_HOUR)
+  async handlePrune() {
+    await this.databaseService.pruneOldData()
   }
 
   private async subscribeToWS(): Promise<void> {
@@ -88,7 +94,8 @@ export class BinanceService {
       }
 
       const maxRowsInMemory = CACHE_LIMIT
-      this.aggregators[symbol] = new OrderFlowAggregator('binance', symbol, interval, intervalSizeMs, {
+      const candleQueue = new CandleQueue(this.databaseService)
+      this.aggregators[symbol] = new OrderFlowAggregator('binance', symbol, interval, intervalSizeMs, candleQueue, {
         maxCacheInMemory: maxRowsInMemory
       })
     }
@@ -105,7 +112,7 @@ export class BinanceService {
       const aggr = this.getOrderFlowAggregator(symbol, this.BASE_INTERVAL)
       const closedCandle = aggr.processCandleClosed()
 
-      await this.persistCandlesToStorage(symbol, this.BASE_INTERVAL)
+      await aggr.candleQueue.persistCandlesToStorage(symbol, this.BASE_INTERVAL)
 
       if (!closedCandle) {
         continue
@@ -141,11 +148,6 @@ export class BinanceService {
         }
       }
     }
-  }
-
-  @Cron(CronExpression.EVERY_HOUR)
-  async handlePrune() {
-    await this.databaseService.pruneOldData()
   }
 
   async buildAggregatedCandle(symbol: string, targetInterval: INTERVALS, aggregationEnd?: Date, aggregationStart?: Date) {
@@ -193,9 +195,6 @@ export class BinanceService {
     }
   }
 
-  // Ensure mergeFootPrintCandles function exists and correctly aggregates the candleSubset into a single candle
-  // Ensure alignsWithTargetInterval function is correctly implemented as shown previously
-
   private processNewTrades(symbol: string, isBuyerMaker: boolean, positionSize: numberInString, price: numberInString) {
     if (!this.didFinishConnectingWS) {
       return
@@ -203,25 +202,5 @@ export class BinanceService {
 
     const aggr = this.getOrderFlowAggregator(symbol, this.BASE_INTERVAL)
     aggr.processNewTrades(isBuyerMaker, Number(positionSize), Number(price))
-  }
-
-  private async persistCandlesToStorage(symbol: string, interval: string) {
-    const aggr = this.getOrderFlowAggregator(symbol, interval)
-
-    const queuedCandles = aggr.getQueuedCandles()
-    if (queuedCandles.length === 0) {
-      return
-    }
-
-    this.logger.log(
-      'Saving batch of candles',
-      queuedCandles.map((c) => c.uuid)
-    )
-
-    const savedUUIDs = await this.databaseService.batchSaveFootPrintCandles([...queuedCandles])
-
-    // Filter out successfully saved candles
-    aggr.markSavedCandles(savedUUIDs)
-    aggr.pruneCandleQueue()
   }
 }

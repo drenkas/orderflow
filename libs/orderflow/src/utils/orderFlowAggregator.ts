@@ -1,7 +1,8 @@
-import { getStartOfMinute } from './date'
-import { IFootPrintCandle, IFootPrintClosedCandle, IPriceLevelClosed } from '../dto/orderflow.dto'
-import { CACHE_LIMIT } from '@tsquant/exchangeapi/dist/lib/constants'
 import * as crypto from 'crypto'
+import { CandleQueue } from '@orderflow/utils/candleQueue'
+import { getStartOfMinute } from '@orderflow/utils/date'
+import { IFootPrintCandle, IFootPrintClosedCandle, IPriceLevelClosed } from '@orderflow/dto/orderflow.dto'
+import { CACHE_LIMIT } from '@tsquant/exchangeapi/dist/lib/constants'
 
 export interface OrderFlowAggregatorConfig {
   // Define per-level price precision used to group trades by level
@@ -22,13 +23,19 @@ export class OrderFlowAggregator {
   /** Candle currently building (still open) */
   private activeCandle: IFootPrintCandle | null = null
 
-  /** Queue of candles that may not yet have reached the DB yet (closed candles) */
-  private candleQueue: IFootPrintClosedCandle[] = []
-
   /** Used for backtesting in replace of getStartOfMinute()  */
   private currMinute: number | null = null
 
-  constructor(exchange: string, symbol: string, interval: string, intervalSizeMs: number, config?: Partial<OrderFlowAggregatorConfig>) {
+  private _candleQueue
+
+  constructor(
+    exchange: string,
+    symbol: string,
+    interval: string,
+    intervalSizeMs: number,
+    candleQueue: CandleQueue,
+    config?: Partial<OrderFlowAggregatorConfig>
+  ) {
     this.exchange = exchange
     this.symbol = symbol
     this.interval = interval
@@ -38,53 +45,16 @@ export class OrderFlowAggregator {
       maxCacheInMemory: CACHE_LIMIT,
       ...config
     }
+
+    this._candleQueue = candleQueue
+  }
+
+  get candleQueue() {
+    return this._candleQueue
   }
 
   public setCurrMinute(currMinute: number): void {
     this.currMinute = currMinute
-  }
-
-  /** Get only candles that haven't been saved to DB yet */
-  public getQueuedCandles(): IFootPrintClosedCandle[] {
-    return this.getAllCandles().filter((candle) => !candle.didPersistToStore)
-  }
-
-  public clearCandleQueue(): void {
-    this.candleQueue = []
-  }
-
-  /** Get all candles, incl those already saved to DB */
-  public getAllCandles(): IFootPrintClosedCandle[] {
-    return this.candleQueue
-  }
-
-  /** Marks which candles have been saved to DB */
-  public markSavedCandles(savedUUIDs: string[]) {
-    // console.log(`markSavedCandles: ${savedUUIDs}`)
-    for (const uuid of savedUUIDs) {
-      const candle = this.getAllCandles().find((c) => c.uuid === uuid)
-      if (candle) {
-        candle.didPersistToStore = true
-        // console.log(`successfully marked: ${uuid}`)
-      } else {
-        console.log(`no candle found for uuid (${uuid})`, this.getAllCandles())
-      }
-    }
-  }
-
-  /** Call to ensure candle queue is trimmed within max length (oldest are discarded first) */
-  public pruneCandleQueue() {
-    const MAX_QUEUE_LENGTH = this.config.maxCacheInMemory
-    if (this.candleQueue.length <= MAX_QUEUE_LENGTH) {
-      return
-    }
-
-    // Trim store to last x candles, based on config
-    const rowsToTrim = this.candleQueue.length - MAX_QUEUE_LENGTH
-
-    console.log(`removing ${rowsToTrim} candles from aggregator queue. Length before: ${this.candleQueue.length}`)
-    this.candleQueue.splice(0, rowsToTrim)
-    console.log(`len after: ${this.candleQueue.length}`)
   }
 
   public retireActiveCandle(): IFootPrintClosedCandle | undefined {
@@ -121,7 +91,7 @@ export class OrderFlowAggregator {
       didPersistToStore: false
     }
 
-    this.candleQueue.push(closedCandle)
+    this._candleQueue.enqueCandle(closedCandle)
     this.activeCandle = null
 
     return closedCandle

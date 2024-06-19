@@ -8,6 +8,7 @@ import { CANDLE_BUILDER_RULES } from '@orderflow/constants'
 import { IAggregatedTrade } from '@orderflow/dto/binanceData.dto'
 import { IFootPrintClosedCandle } from '@orderflow/dto/orderflow.dto'
 import { calculateCandlesNeeded } from '@orderflow/utils/candles'
+import { CandleQueue } from '@orderflow/utils/candleQueue'
 import { adjustBackfillEndDate, adjustBackfillStartDate, getTimestampStartOfDay } from '@orderflow/utils/date'
 import { OrderFlowAggregator } from '@orderflow/utils/orderFlowAggregator'
 import { mergeFootPrintCandles } from '@orderflow/utils/orderFlowUtil'
@@ -69,7 +70,8 @@ export class BackfillService {
   private setupTradeAggregator(): void {
     const maxRowsInMemory = CACHE_LIMIT
     const intervalSizeMs: number = KlineIntervalMs[INTERVALS.ONE_MINUTE]
-    this.aggregators[this.BASE_SYMBOL] = new OrderFlowAggregator(Exchange.BINANCE, this.BASE_SYMBOL, INTERVALS.ONE_MINUTE, intervalSizeMs, {
+    const candleQueue = new CandleQueue(this.databaseService)
+    this.aggregators[this.BASE_SYMBOL] = new OrderFlowAggregator(Exchange.BINANCE, this.BASE_SYMBOL, INTERVALS.ONE_MINUTE, intervalSizeMs, candleQueue, {
       maxCacheInMemory: maxRowsInMemory
     })
   }
@@ -213,7 +215,7 @@ export class BackfillService {
   private async closeAndPrepareNextCandle(): Promise<void> {
     const closedCandle: IFootPrintClosedCandle | undefined = this.aggregators[this.BASE_SYMBOL].retireActiveCandle()
 
-    this.aggregators[this.BASE_SYMBOL].clearCandleQueue() // Because we don't need a queue here in this backfiller
+    this.aggregators[this.BASE_SYMBOL].candleQueue.clearQueue() // Because we don't need a queue here in this backfiller
 
     if (closedCandle) {
       this.candles[this.BASE_INTERVAL].push(closedCandle)

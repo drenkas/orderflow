@@ -1,9 +1,9 @@
 require('dotenv').config()
 
+import { DataSource, DataSourceOptions } from 'typeorm'
 import { FootPrintCandle } from '@database/entity/footprint_candle.entity'
-import { TypeOrmModuleOptions } from '@nestjs/typeorm'
 
-export const ORMConfig: TypeOrmModuleOptions = {
+export const DatabaseConfiguration: DataSourceOptions = {
   type: 'postgres',
   host: process.env.DB_HOST,
   port: Number(process.env.DB_PORT),
@@ -11,5 +11,7 @@ export const ORMConfig: TypeOrmModuleOptions = {
   password: process.env.DB_PASSWORD,
   database: process.env.DB_NAME,
   entities: [FootPrintCandle],
-  synchronize: true
+  synchronize: false
 }
+
+export const AppDataSource = new DataSource(DatabaseConfiguration)
