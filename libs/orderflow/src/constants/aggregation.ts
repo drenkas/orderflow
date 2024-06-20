@@ -15,7 +15,7 @@ export const intervalToMinutesMap = Object.freeze({
 })
 
 export const aggregationIntervalMap = Object.freeze({
-  [INTERVALS.FIVE_MINUTES]: { baseInterval: INTERVALS.ONE_MINUTE, count: 1 },
+  [INTERVALS.FIVE_MINUTES]: { baseInterval: INTERVALS.ONE_MINUTE, count: 5 },
   [INTERVALS.FIFTEEN_MINUTES]: { baseInterval: INTERVALS.FIVE_MINUTES, count: 3 },
   [INTERVALS.THIRTY_MINUTES]: { baseInterval: INTERVALS.FIFTEEN_MINUTES, count: 2 },
   [INTERVALS.ONE_HOUR]: { baseInterval: INTERVALS.THIRTY_MINUTES, count: 2 },

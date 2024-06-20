@@ -39,20 +39,20 @@ export class DatabaseService {
     return saved
   }
 
-  async getCandles(exchange: string, symbol: string, interval: string, openTime?: Date, closeTime?: Date): Promise<IFootPrintClosedCandle[]> {
+  async getCandles(exchange: string, symbol: string, interval: string, start?: number, end?: number): Promise<IFootPrintClosedCandle[]> {
     try {
-      const whereConditions = {
+      const whereConditions: any = {
         exchange,
         symbol,
         interval
       }
 
-      if (openTime) {
-        whereConditions['openTime'] = MoreThanOrEqual(openTime)
+      if (start) {
+        whereConditions['openTimeMs'] = MoreThanOrEqual(start)
       }
 
-      if (closeTime) {
-        whereConditions['closeTime'] = LessThanOrEqual(closeTime)
+      if (end) {
+        whereConditions['closeTimeMs'] = LessThanOrEqual(end)
       }
 
       const queryOptions: FindManyOptions<FootPrintCandle> = {
