@@ -129,6 +129,8 @@ export class BinanceService {
   async buildHTFCandle(symbol: string, targetInterval: INTERVALS, openTimeMs: number, closeTimeMs: number) {
     const { baseInterval, count } = aggregationIntervalMap[targetInterval]
 
+    this.logger.log(`Building a new HTF candle for ${symbol} ${targetInterval}. Will attempt to find and use ${count} ${baseInterval} candles`)
+
     const baseIntervalMs = KlineIntervalMs[baseInterval]
     const aggregationStart = openTimeMs - baseIntervalMs * (count - 1)
     const aggregationEnd = closeTimeMs

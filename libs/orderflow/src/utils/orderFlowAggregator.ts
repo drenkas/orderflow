@@ -24,7 +24,7 @@ export class OrderFlowAggregator {
   private activeCandle: IFootPrintCandle | null = null
 
   /** Used for backtesting in replace of getStartOfMinute()  */
-  private currMinute: number | null = null
+  private simulationMinute: number | null = null
 
   private _candleQueue
 
@@ -53,8 +53,8 @@ export class OrderFlowAggregator {
     return this._candleQueue
   }
 
-  public setCurrMinute(currMinute: number): void {
-    this.currMinute = currMinute
+  public setSimulationMinute(simulationMinute: number): void {
+    this.simulationMinute = simulationMinute
   }
 
   public retireActiveCandle(): IFootPrintClosedCandle | undefined {
@@ -98,7 +98,7 @@ export class OrderFlowAggregator {
   }
 
   public createNewCandle() {
-    const startDate: Date = this.currMinute ? new Date(this.currMinute) : getStartOfMinute()
+    const startDate: Date = this.simulationMinute ? new Date(this.simulationMinute) : getStartOfMinute()
     const openTimeMs = startDate.getTime()
     const closeTimeMs = startDate.getTime() + this.intervalSizeMs - 1
     const openTime = startDate.toISOString()

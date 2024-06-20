@@ -7,7 +7,7 @@ import { DatabaseService } from '@database'
 import { CANDLE_BUILDER_RULES } from '@orderflow/constants'
 import { IAggregatedTrade } from '@orderflow/dto/binanceData.dto'
 import { IFootPrintClosedCandle } from '@orderflow/dto/orderflow.dto'
-import { calculateCandlesNeeded } from '@orderflow/utils/candles'
+import { calculateCandlesNeeded } from '@orderflow/utils/candleBuildHelper'
 import { CandleQueue } from '@orderflow/utils/candleQueue'
 import { adjustBackfillEndDate, adjustBackfillStartDate, getTimestampStartOfDay } from '@orderflow/utils/date'
 import { OrderFlowAggregator } from '@orderflow/utils/orderFlowAggregator'
@@ -241,7 +241,7 @@ export class BackfillService {
   private incrementTestMinute(): void {
     this.currTestMinute = this.nextMinuteCandleClose
     this.nextMinuteCandleClose = this.nextMinuteCandleClose + 60 * 1000
-    this.aggregators[this.BASE_SYMBOL].setCurrMinute(this.currTestMinute)
+    this.aggregators[this.BASE_SYMBOL].setSimulationMinute(this.currTestMinute)
   }
 
   private async downloadAndProcessCsvFiles() {
@@ -262,7 +262,7 @@ export class BackfillService {
 
     this.currTestMinute = backfillStartAt
     this.nextMinuteCandleClose = this.currTestMinute + 60 * 1000
-    this.aggregators[this.BASE_SYMBOL].setCurrMinute(this.currTestMinute)
+    this.aggregators[this.BASE_SYMBOL].setSimulationMinute(this.currTestMinute)
 
     this.logger.log(`currTestMinute: ${this.currTestMinute}`)
     this.logger.log(`nextMinuteCandleClose: ${this.nextMinuteCandleClose}`)
