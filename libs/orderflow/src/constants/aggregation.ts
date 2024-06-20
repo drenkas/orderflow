@@ -1,6 +1,6 @@
 import { INTERVALS } from '@tsquant/exchangeapi/dist/lib/constants/candles'
 
-export const intervalMap = Object.freeze({
+export const intervalToMinutesMap = Object.freeze({
   '5m': 5,
   '15m': 15,
   '30m': 30,
