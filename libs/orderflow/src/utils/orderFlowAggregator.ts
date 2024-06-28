@@ -1,7 +1,7 @@
 import * as crypto from 'crypto'
 import { CandleQueue } from '@orderflow/utils/candleQueue'
 import { getStartOfMinute } from '@orderflow/utils/date'
-import { IFootPrintCandle, IFootPrintClosedCandle, IPriceLevelClosed } from '@orderflow/dto/orderflow.dto'
+import { IFootPrintCandle, IFootPrintClosedCandle, IPriceLevel } from '@orderflow/dto/orderflow.dto'
 import { CACHE_LIMIT } from '@tsquant/exchangeapi/dist/lib/constants'
 
 export interface OrderFlowAggregatorConfig {
@@ -64,7 +64,7 @@ export class OrderFlowAggregator {
       return
     }
 
-    const closedPriceLevels: { [price: number]: IPriceLevelClosed } = {}
+    const closedPriceLevels: { [price: number]: IPriceLevel } = {}
 
     const sortedLevels: string[] = Object.keys(candle.priceLevels).sort(
       (a, b) => Number(b) - Number(a) // descending price
@@ -73,10 +73,7 @@ export class OrderFlowAggregator {
       const level = candle.priceLevels[levelPrice]
       const imbalancePercent = (level.volSumBid / (level.volSumBid + level.volSumAsk)) * 100
 
-      const closedLevel: IPriceLevelClosed = {
-        ...level,
-        bidImbalancePercent: +imbalancePercent.toFixed(2)
-      }
+      const closedLevel: IPriceLevel = { ...level }
 
       closedPriceLevels[levelPrice] = closedLevel
     }
@@ -86,7 +83,6 @@ export class OrderFlowAggregator {
     const closedCandle: IFootPrintClosedCandle = {
       ...candle,
       priceLevels: closedPriceLevels,
-      bidImbalancePercent: +imbalancePercent.toFixed(2),
       isClosed: true,
       didPersistToStore: false
     }

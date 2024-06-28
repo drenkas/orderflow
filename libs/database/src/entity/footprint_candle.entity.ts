@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable indent */
 import { Entity, PrimaryGeneratedColumn, Column, Index } from 'typeorm'
-import { IPriceLevelClosed } from '../../../orderflow/src/dto/orderflow.dto'
+import { IPriceLevel } from '../../../orderflow/src/dto/orderflow.dto'
 
 export const CandleUniqueColumns = ['exchange', 'symbol', 'interval', 'openTime']
 
@@ -44,9 +44,6 @@ export class FootPrintCandle {
   @Column('double precision', { default: 0 })
   aggressiveAsk: number
 
-  @Column('double precision', { default: 0 })
-  bidImbalancePercent: number
-
   @Column('double precision')
   high: number
 
@@ -60,5 +57,5 @@ export class FootPrintCandle {
   @Column('jsonb', { default: {} })
   // @OneToMany(() => FootPrintCandleLevel, (level) => level.closeTime)
   // @JoinColumn()
-  priceLevels: Record<string, IPriceLevelClosed>
+  priceLevels: Record<string, IPriceLevel>
 }

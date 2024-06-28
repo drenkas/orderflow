@@ -19,22 +19,15 @@ export interface IFootPrintCandle {
   isClosed: boolean
 }
 
-export type IPriceLevelsClosed = { [price: number]: IPriceLevelClosed }
+export type IPriceLevelsClosed = { [price: number]: IPriceLevel }
 
 export type IFootPrintClosedCandle = IFootPrintCandle & {
   priceLevels: IPriceLevelsClosed
-  bidImbalancePercent: number
   isClosed: true
   didPersistToStore: boolean
 }
-
-// interface IOrderRow {
-//   [price: string]: number
-// }
 
 export interface IPriceLevel {
   volSumBid: number
   volSumAsk: number
 }
-
-export type IPriceLevelClosed = IPriceLevel & { bidImbalancePercent: number }

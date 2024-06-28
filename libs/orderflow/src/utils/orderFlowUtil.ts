@@ -42,9 +42,6 @@ function aggregateCandleProperties(aggrCandle: IFootPrintClosedCandle, candle: I
   aggrCandle.aggressiveBid = doMathOnProp(aggrCandle, candle, 'aggressiveBid', '+')
   aggrCandle.aggressiveAsk = doMathOnProp(aggrCandle, candle, 'aggressiveAsk', '+')
 
-  const imbalancePercent = (aggrCandle.aggressiveBid / (aggrCandle.aggressiveBid + aggrCandle.aggressiveAsk)) * 100
-  aggrCandle.bidImbalancePercent = +imbalancePercent.toFixed(2)
-
   aggrCandle.high = doMathOnProp(aggrCandle, candle, 'high', 'max')
   aggrCandle.low = doMathOnProp(aggrCandle, candle, 'low', 'min')
   aggrCandle.close = candle.close
@@ -70,10 +67,8 @@ function mergePriceLevels(levels1: IPriceLevelsClosed, levels2: IPriceLevelsClos
     if (level1 && level2) {
       const volSumAsk = level1.volSumAsk + level2.volSumAsk
       const volSumBid = level1.volSumBid + level2.volSumBid
-      const imbalancePercent = (volSumBid / (volSumBid + volSumAsk)) * 100
 
       mergedLevels[price] = {
-        bidImbalancePercent: +imbalancePercent.toFixed(2),
         volSumAsk: volSumAsk,
         volSumBid: volSumBid
       }
