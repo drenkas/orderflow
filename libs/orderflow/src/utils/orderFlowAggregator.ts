@@ -71,14 +71,11 @@ export class OrderFlowAggregator {
     )
     for (const levelPrice of sortedLevels) {
       const level = candle.priceLevels[levelPrice]
-      const imbalancePercent = (level.volSumBid / (level.volSumBid + level.volSumAsk)) * 100
 
       const closedLevel: IPriceLevel = { ...level }
 
       closedPriceLevels[levelPrice] = closedLevel
     }
-
-    const imbalancePercent = (candle.aggressiveBid / (candle.aggressiveBid + candle.aggressiveAsk)) * 100
 
     const closedCandle: IFootPrintClosedCandle = {
       ...candle,
