@@ -3,7 +3,6 @@ import { InjectRepository } from '@nestjs/typeorm'
 import { FindManyOptions, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm'
 import { CandleUniqueColumns, FootPrintCandle } from '@database/entity/footprint_candle.entity'
 import { IFootPrintClosedCandle } from '@orderflow/dto/orderflow.dto'
-import { SymbolIntervalTimestampRangeDictionary } from '@tsquant/exchangeapi/dist/lib/types'
 import { CACHE_LIMIT } from '@shared/constants/exchange'
 
 @Injectable()
@@ -121,7 +120,14 @@ export class DatabaseService {
     `
 
       const result = await this.footprintCandleRepository.query(query, params)
-      const resultMap: SymbolIntervalTimestampRangeDictionary = {}
+      const resultMap: {
+        [symbol: string]: {
+          [interval: string]: {
+            first: number
+            last: number
+          }
+        }
+      } = {}
 
       result.forEach((row) => {
         if (!resultMap[row.symbol]) {
