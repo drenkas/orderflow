@@ -1,4 +1,4 @@
-import { INTERVALS } from '@tsquant/exchangeapi/dist/lib/constants/candles'
+import { INTERVALS } from '@shared/utils/intervals'
 
 export const intervalToMinutesMap = Object.freeze({
   '5m': 5,

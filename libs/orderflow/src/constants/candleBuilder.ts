@@ -1,4 +1,4 @@
-import { INTERVALS } from '@tsquant/exchangeapi/dist/lib/constants'
+import { INTERVALS } from '@shared/utils/intervals'
 
 export const CANDLE_BUILDER_RULES = Object.freeze({
   [INTERVALS.ONE_MINUTE]: [

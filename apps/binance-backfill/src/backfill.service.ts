@@ -12,8 +12,8 @@ import { CandleQueue } from '@orderflow/utils/candleQueue'
 import { adjustBackfillEndDate, adjustBackfillStartDate, getTimestampStartOfDay } from '@orderflow/utils/date'
 import { OrderFlowAggregator } from '@orderflow/utils/orderFlowAggregator'
 import { mergeFootPrintCandles } from '@orderflow/utils/orderFlowUtil'
-import { CACHE_LIMIT, Exchange, INTERVALS, KlineIntervalMs, KlineIntervalTimes } from '@tsquant/exchangeapi/dist/lib/constants'
-import { SymbolIntervalTimestampRangeDictionary } from '@tsquant/exchangeapi/dist/lib/types'
+import { CACHE_LIMIT, Exchange } from '@shared/constants/exchange'
+import { INTERVALS, KlineIntervalMs, KlineIntervalTimes } from '@shared/utils/intervals'
 
 @Injectable()
 export class BackfillService {
@@ -26,7 +26,14 @@ export class BackfillService {
   protected symbols: string[] = process.env.SYMBOLS ? process.env.SYMBOLS.split(',') : ['BTCUSDT']
   private readonly BASE_SYMBOL = this.symbols.shift() as string
 
-  private timestampsRange: SymbolIntervalTimestampRangeDictionary = {}
+  private timestampsRange: {
+    [symbol: string]: {
+      [interval: string]: {
+        first: number
+        last: number
+      }
+    }
+  } = {}
 
   private logger: Logger = new Logger(BackfillService.name)
 

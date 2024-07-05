@@ -1,5 +1,5 @@
 /* eslint-disable indent */
-import { INTERVALS } from '@tsquant/exchangeapi/dist/lib/constants/candles'
+import { INTERVALS } from '@shared/utils/intervals'
 import { IsEnum, IsString } from 'class-validator'
 
 export class CandleBySymbolAndIntervalDto {

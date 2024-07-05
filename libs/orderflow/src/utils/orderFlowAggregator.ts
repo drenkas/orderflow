@@ -2,7 +2,7 @@ import * as crypto from 'crypto'
 import { CandleQueue } from '@orderflow/utils/candleQueue'
 import { getStartOfMinute } from '@orderflow/utils/date'
 import { IFootPrintCandle, IFootPrintClosedCandle, IPriceLevel } from '@orderflow/dto/orderflow.dto'
-import { CACHE_LIMIT } from '@tsquant/exchangeapi/dist/lib/constants'
+import { CACHE_LIMIT } from '@shared/constants/exchange'
 
 export interface OrderFlowAggregatorConfig {
   // Define per-level price precision used to group trades by level

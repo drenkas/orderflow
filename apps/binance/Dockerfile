@@ -2,6 +2,9 @@ FROM node:16
 
 WORKDIR /app
 
+# Copy .npmrc file for private package access
+COPY .npmrc ./
+
 # Copy package.json and yarn.lock files
 COPY apps/binance/package.json ./package.json
 COPY apps/binance/yarn.lock ./yarn.lock

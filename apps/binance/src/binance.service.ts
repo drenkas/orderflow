@@ -9,12 +9,13 @@ import { CandleQueue } from '@orderflow/utils/candleQueue'
 import { OrderFlowAggregator } from '@orderflow/utils/orderFlowAggregator'
 import { mergeFootPrintCandles } from '@orderflow/utils/orderFlowUtil'
 import { INTERVALS } from '@shared/utils/intervals'
-import { CACHE_LIMIT, Exchange, KlineIntervalMs } from '@tsquant/exchangeapi/dist/lib/constants'
+import { KlineIntervalMs } from '@shared/constants/intervals'
+import { CACHE_LIMIT, Exchange } from '@shared/constants/exchange'
 
 @Injectable()
 export class BinanceService {
   private logger: Logger = new Logger(BinanceService.name)
-  private symbols: string[] = ['BTCUSDT']
+  private symbols: string[] = process.env.SYMBOLS?.split(',') ?? ['BTCUSDT']
   private readonly BASE_INTERVAL = INTERVALS.ONE_MINUTE
   private readonly HTF_INTERVALS = [
     INTERVALS.FIVE_MINUTES,

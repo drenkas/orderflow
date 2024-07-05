@@ -3,8 +3,8 @@ import { InjectRepository } from '@nestjs/typeorm'
 import { FindManyOptions, LessThanOrEqual, MoreThanOrEqual, Repository } from 'typeorm'
 import { CandleUniqueColumns, FootPrintCandle } from '@database/entity/footprint_candle.entity'
 import { IFootPrintClosedCandle } from '@orderflow/dto/orderflow.dto'
-import { CACHE_LIMIT } from '@tsquant/exchangeapi/dist/lib/constants/exchange'
 import { SymbolIntervalTimestampRangeDictionary } from '@tsquant/exchangeapi/dist/lib/types'
+import { CACHE_LIMIT } from '@shared/constants/exchange'
 
 @Injectable()
 export class DatabaseService {
@@ -100,7 +100,17 @@ export class DatabaseService {
   }
 
   /** Fetch the last and first stored timestamp data to understand the range of stored data. Timestamp is the openTime for kLines */
-  async getTimestampRange(exchange: string, symbol?: string): Promise<SymbolIntervalTimestampRangeDictionary> {
+  async getTimestampRange(
+    exchange: string,
+    symbol?: string
+  ): Promise<{
+    [symbol: string]: {
+      [interval: string]: {
+        first: number
+        last: number
+      }
+    }
+  }> {
     try {
       const params = symbol ? [exchange, symbol] : [exchange]
       const query = `
