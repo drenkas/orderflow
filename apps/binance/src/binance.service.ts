@@ -132,7 +132,7 @@ export class BinanceService {
     this.logger.log(`Building a new HTF candle for ${symbol} ${targetInterval}. Will attempt to find and use ${count} ${baseInterval} candles`)
 
     const baseIntervalMs = KlineIntervalMs[baseInterval]
-    const aggregationStart = openTimeMs - baseIntervalMs * count
+    const aggregationStart = closeTimeMs - baseIntervalMs * count
     const aggregationEnd = closeTimeMs
 
     const candles = await this.databaseService.getCandles(Exchange.BINANCE, symbol, baseInterval, aggregationStart, aggregationEnd)
