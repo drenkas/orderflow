@@ -11,6 +11,7 @@ services:
       - DB_USERNAME=postgres
       - DB_PASSWORD=ZXsPxuFQJzK1LAmA
       - DB_NAME=postgres
+      - SYMBOLS=${SYMBOLS}
     extra_hosts:
       - 'host.docker.internal:host-gateway'
     entrypoint: ['node', 'dist/main.js']
@@ -27,6 +28,7 @@ services:
       - DB_USERNAME=postgres
       - DB_PASSWORD=ZXsPxuFQJzK1LAmA
       - DB_NAME=postgres
+      - SYMBOLS=${SYMBOLS}
     extra_hosts:
       - 'host.docker.internal:host-gateway'
     entrypoint: ['node', 'dist/main.js']
