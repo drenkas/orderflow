@@ -43,7 +43,7 @@ services:
       - DB_HOST=host.docker.internal
       - DB_PORT=5433
       - DB_USERNAME=postgres
-      - DB_PASSWORD=password
+      - DB_PASSWORD=ZXsPxuFQJzK1LAmA
       - DB_NAME=postgres
     extra_hosts:
       - 'host.docker.internal:host-gateway'
