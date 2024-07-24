@@ -57,7 +57,7 @@ export class CandleQueue {
     }
   }
 
-  private async persistCandlesToStorage() {
+  public async persistCandlesToStorage() {
     const queuedCandles = this.getQueuedCandles()
     if (queuedCandles.length === 0) {
       return

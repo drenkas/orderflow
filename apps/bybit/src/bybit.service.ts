@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { Cron, CronExpression } from '@nestjs/schedule'
+import { v4 } from 'uuid'
 import { DatabaseService } from '@database/database.service'
-import * as crypto from 'crypto'
 import { BybitWebSocketService } from 'apps/bybit/src/BybitWebsocketService'
 import { TradeData } from 'apps/bybit/src/websocket.responses'
 import { IFootPrintCandle } from '@orderflow/dto/orderflow.dto'
@@ -81,7 +81,7 @@ export class ByBitService {
     this.logger.log(`Creating new candle at ${formattedDate}.`)
 
     this.activeCandles.push({
-      id: crypto.randomUUID(),
+      id: v4(),
       timestamp: now.toISOString(),
       symbol: 'BTCUSDT',
       exchange: 'bybit',

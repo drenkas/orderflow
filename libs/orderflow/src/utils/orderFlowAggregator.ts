@@ -1,4 +1,4 @@
-import * as crypto from 'crypto'
+import { v4 } from 'uuid'
 import { CandleQueue } from '@orderflow/utils/candleQueue'
 import { getStartOfMinute } from '@orderflow/utils/date'
 import { IFootPrintCandle, IFootPrintClosedCandle, IPriceLevel } from '@orderflow/dto/orderflow.dto'
@@ -98,7 +98,7 @@ export class OrderFlowAggregator {
     const closeTime = new Date(closeTimeMs).toISOString()
 
     const candle: IFootPrintCandle = {
-      uuid: crypto.randomUUID(),
+      uuid: v4(),
       openTime,
       openTimeMs,
       closeTime,

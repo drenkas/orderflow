@@ -1,3 +1,4 @@
+import { v4 } from 'uuid'
 import { descendingOrder, mergeDedupeArrays } from './array'
 import { getNewestDate, getOldestDate } from './date'
 import { doMathOnProp } from './math'
@@ -20,7 +21,7 @@ export function mergeFootPrintCandles(candles: IFootPrintClosedCandle[], interva
 
   return {
     ...aggrCandle,
-    uuid: crypto.randomUUID(),
+    uuid: v4(),
     interval,
     openTime: aggrCandle.openTime,
     closeTime: aggrCandle.closeTime,
