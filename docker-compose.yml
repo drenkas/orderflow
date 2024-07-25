@@ -34,19 +34,3 @@ services:
     entrypoint: ['node', 'dist/main.js']
     ports:
       - 5001:3000
-  api:
-    restart: always
-    build:
-      context: .
-      dockerfile: ./apps/api/Dockerfile
-    environment:
-      - DB_HOST=host.docker.internal
-      - DB_PORT=5433
-      - DB_USERNAME=postgres
-      - DB_PASSWORD=ZXsPxuFQJzK1LAmA
-      - DB_NAME=postgres
-    extra_hosts:
-      - 'host.docker.internal:host-gateway'
-    entrypoint: ['node', 'dist/main.js']
-    ports:
-      - 5002:3000
