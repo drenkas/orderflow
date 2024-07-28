@@ -24,7 +24,7 @@ export class OrderFlowAggregator {
   private activeCandle: IFootPrintCandle | null = null
 
   /** Used for backtesting in replace of getStartOfMinute()  */
-  private simulationMinute: number | null = null
+  public simulationMinute: number | null = null
 
   private _candleQueue
 
@@ -51,10 +51,6 @@ export class OrderFlowAggregator {
 
   get candleQueue() {
     return this._candleQueue
-  }
-
-  public setSimulationMinute(simulationMinute: number): void {
-    this.simulationMinute = simulationMinute
   }
 
   public retireActiveCandle(): IFootPrintClosedCandle | undefined {

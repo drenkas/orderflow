@@ -18,7 +18,6 @@ import { INTERVALS, KlineIntervalMs, KlineIntervalTimes } from '@shared/utils/in
 @Injectable()
 export class BackfillService {
   private readonly baseUrl = 'https://data.binance.vision/data/futures/um/daily/aggTrades'
-  private readonly exchange: Exchange = Exchange.BINANCE
   private readonly BASE_INTERVAL = INTERVALS.ONE_MINUTE
   private currTestMinute: number = new Date().getTime()
   private nextMinuteCandleClose: number = new Date().getTime()
@@ -161,16 +160,9 @@ export class BackfillService {
 
   /** Clear after each file is processed and saved, otherwise the heap size would grow too large. Don't clear 1d, 1w, 1M */
   private clearCandles(): void {
-    this.candles[INTERVALS.ONE_MINUTE] = []
-    this.candles[INTERVALS.FIVE_MINUTES] = []
-    this.candles[INTERVALS.FIFTEEN_MINUTES] = []
-    this.candles[INTERVALS.THIRTY_MINUTES] = []
-    this.candles[INTERVALS.ONE_HOUR] = []
-    this.candles[INTERVALS.TWO_HOURS] = []
-    this.candles[INTERVALS.FOUR_HOURS] = []
-    this.candles[INTERVALS.SIX_HOURS] = []
-    this.candles[INTERVALS.EIGHT_HOURS] = []
-    this.candles[INTERVALS.TWELVE_HOURS] = []
+    for (const interval of Object.keys(this.candles)) {
+      this.candles[interval] = []
+    }
   }
 
   async getStoredFirstAndLastTimestamps(symbol: string) {
@@ -248,7 +240,7 @@ export class BackfillService {
   private incrementTestMinute(): void {
     this.currTestMinute = this.nextMinuteCandleClose
     this.nextMinuteCandleClose = this.nextMinuteCandleClose + 60 * 1000
-    this.aggregators[this.BASE_SYMBOL].setSimulationMinute(this.currTestMinute)
+    this.aggregators[this.BASE_SYMBOL].simulationMinute = this.currTestMinute
   }
 
   private async downloadAndProcessCsvFiles() {
@@ -269,7 +261,7 @@ export class BackfillService {
 
     this.currTestMinute = backfillStartAt
     this.nextMinuteCandleClose = this.currTestMinute + 60 * 1000
-    this.aggregators[this.BASE_SYMBOL].setSimulationMinute(this.currTestMinute)
+    this.aggregators[this.BASE_SYMBOL].simulationMinute = this.currTestMinute
 
     this.logger.log(`currTestMinute: ${this.currTestMinute}`)
     this.logger.log(`nextMinuteCandleClose: ${this.nextMinuteCandleClose}`)
