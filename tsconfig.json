@@ -18,6 +18,12 @@
     "forceConsistentCasingInFileNames": false,
     "noFallthroughCasesInSwitch": false,
     "paths": {
+      "@cache": [
+        "libs/cache/src"
+      ],
+      "@cache/*": [
+        "libs/cache/src/*"
+      ],
       "@database": [
         "libs/database/src"
       ],
@@ -35,6 +41,12 @@
       ],
       "@shared/*": [
         "libs/shared/src/*"
+      ],
+      "@app/cache": [
+        "libs/cache/src"
+      ],
+      "@app/cache/*": [
+        "libs/cache/src/*"
       ]
     }
   }

@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common'
 import { Cron, CronExpression } from '@nestjs/schedule'
 import { numberInString, WsMessageAggTradeRaw } from 'binance'
 import { BinanceWebSocketService } from './BinanceWebsocketService'
+import { CacheService } from '@cache/cache.service'
 import { DatabaseService } from '@database/database.service'
 import { aggregationIntervalMap } from '@orderflow/constants/aggregation'
 import { findAllEffectedIntervalsOnCandleClose } from '@orderflow/utils/candleBuildHelper'
@@ -40,14 +41,34 @@ export class BinanceService {
   private aggregators: { [symbol: string]: OrderFlowAggregator } = {}
   private candleQueue: CandleQueue
 
-  constructor(private readonly databaseService: DatabaseService, private readonly binanceWsService: BinanceWebSocketService) {
+  constructor(
+    private readonly cacheService: CacheService,
+    private readonly databaseService: DatabaseService,
+    private readonly binanceWsService: BinanceWebSocketService
+  ) {
     this.candleQueue = new CandleQueue(this.databaseService)
+    this
   }
 
   async onModuleInit() {
     this.logger.log(`Starting Binance Orderflow service for Live candle building from raw trades`)
 
+    await this.loadSymbols()
     await this.subscribeToWS()
+  }
+
+  async loadSymbols(): Promise<void> {
+    try {
+      const exchangeSymbolTickSizes: { [symbol: string]: string } = await this.cacheService.getSymbols(Exchange.BINANCE)
+
+      if (Object.keys(exchangeSymbolTickSizes).length > 0) {
+        this.symbols = Object.keys(exchangeSymbolTickSizes)
+      } else {
+        this.logger.warn('No symbols returned from cache service, using default symbols')
+      }
+    } catch (error) {
+      this.logger.error('Failed to fetch symbols:', error)
+    }
   }
 
   @Cron(CronExpression.EVERY_HOUR)
