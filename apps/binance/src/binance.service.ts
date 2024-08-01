@@ -11,6 +11,7 @@ import { mergeFootPrintCandles } from '@orderflow/utils/orderFlowUtil'
 import { INTERVALS } from '@shared/utils/intervals'
 import { KlineIntervalMs } from '@shared/constants/intervals'
 import { CACHE_LIMIT, Exchange } from '@shared/constants/exchange'
+import { IFootPrintClosedCandle } from '@orderflow/dto/orderflow.dto'
 
 @Injectable()
 export class BinanceService {
@@ -37,8 +38,11 @@ export class BinanceService {
   private didFinishConnectingWS: boolean = false
 
   private aggregators: { [symbol: string]: OrderFlowAggregator } = {}
+  private candleQueue: CandleQueue
 
-  constructor(private readonly databaseService: DatabaseService, private readonly binanceWsService: BinanceWebSocketService) {}
+  constructor(private readonly databaseService: DatabaseService, private readonly binanceWsService: BinanceWebSocketService) {
+    this.candleQueue = new CandleQueue(this.databaseService)
+  }
 
   async onModuleInit() {
     this.logger.log(`Starting Binance Orderflow service for Live candle building from raw trades`)
@@ -91,8 +95,7 @@ export class BinanceService {
       }
 
       const maxRowsInMemory = CACHE_LIMIT
-      const candleQueue = new CandleQueue(this.databaseService)
-      this.aggregators[symbol] = new OrderFlowAggregator('binance', symbol, interval, intervalSizeMs, candleQueue, {
+      this.aggregators[symbol] = new OrderFlowAggregator('binance', symbol, interval, intervalSizeMs, {
         maxCacheInMemory: maxRowsInMemory
       })
     }
@@ -105,26 +108,37 @@ export class BinanceService {
     if (!this.didFinishConnectingWS) {
       return
     }
+
+    const closed1mCandles: { [symbol: string]: IFootPrintClosedCandle } = {}
+
     for (const symbol in this.aggregators) {
       const aggr = this.getOrderFlowAggregator(symbol, this.BASE_INTERVAL)
-      const closedCandle = aggr.processCandleClosed()
+      const closed1mCandle = aggr.processCandleClosed()
 
-      await aggr.candleQueue.persistCandlesToStorage(symbol, this.BASE_INTERVAL)
-
-      if (!closedCandle) {
-        continue
+      if (closed1mCandle) {
+        this.candleQueue.enqueCandle(closed1mCandle)
+        closed1mCandles[symbol] = closed1mCandle
       }
+    }
 
-      const nextOpenTimeMS = 1 + closedCandle.closeTimeMs
-      const nextOpenTime = new Date(nextOpenTimeMS)
-      const triggeredIntervals: INTERVALS[] = findAllEffectedIntervalsOnCandleClose(nextOpenTime, this.HTF_INTERVALS)
+    await this.candleQueue.persistCandlesToStorage({ clearQueue: true })
 
-      for (const interval of this.HTF_INTERVALS) {
-        if (triggeredIntervals.includes(interval)) {
-          await this.buildHTFCandle(symbol, interval, closedCandle.openTimeMs, closedCandle.closeTimeMs)
+    for (const symbol in this.aggregators) {
+      const closed1mCandle = closed1mCandles[symbol]
+      if (closed1mCandle) {
+        const nextOpenTimeMS = 1 + closed1mCandle.closeTimeMs
+        const nextOpenTime = new Date(nextOpenTimeMS)
+        const triggeredIntervals: INTERVALS[] = findAllEffectedIntervalsOnCandleClose(nextOpenTime, this.HTF_INTERVALS)
+
+        for (const interval of this.HTF_INTERVALS) {
+          if (triggeredIntervals.includes(interval)) {
+            await this.buildHTFCandle(symbol, interval, closed1mCandle.openTimeMs, closed1mCandle.closeTimeMs)
+          }
         }
       }
     }
+
+    await this.candleQueue.persistCandlesToStorage({ clearQueue: true })
   }
 
   async buildHTFCandle(symbol: string, targetInterval: INTERVALS, openTimeMs: number, closeTimeMs: number) {
@@ -141,9 +155,7 @@ export class BinanceService {
     if (candles?.length === count) {
       const aggregatedCandle = mergeFootPrintCandles(candles, targetInterval)
       if (aggregatedCandle) {
-        const aggr = this.getOrderFlowAggregator(symbol, this.BASE_INTERVAL)
-        aggr.candleQueue.enqueCandle(aggregatedCandle)
-        await aggr.candleQueue.persistCandlesToStorage(symbol, this.BASE_INTERVAL)
+        this.candleQueue.enqueCandle(aggregatedCandle)
       }
     } else {
       this.logger.warn(

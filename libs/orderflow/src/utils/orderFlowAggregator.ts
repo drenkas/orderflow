@@ -26,16 +26,7 @@ export class OrderFlowAggregator {
   /** Used for backtesting in replace of getStartOfMinute()  */
   public simulationMinute: number | null = null
 
-  private _candleQueue
-
-  constructor(
-    exchange: string,
-    symbol: string,
-    interval: string,
-    intervalSizeMs: number,
-    candleQueue: CandleQueue,
-    config?: Partial<OrderFlowAggregatorConfig>
-  ) {
+  constructor(exchange: string, symbol: string, interval: string, intervalSizeMs: number, config?: Partial<OrderFlowAggregatorConfig>) {
     this.exchange = exchange
     this.symbol = symbol
     this.interval = interval
@@ -45,12 +36,6 @@ export class OrderFlowAggregator {
       maxCacheInMemory: CACHE_LIMIT,
       ...config
     }
-
-    this._candleQueue = candleQueue
-  }
-
-  get candleQueue() {
-    return this._candleQueue
   }
 
   public retireActiveCandle(): IFootPrintClosedCandle | undefined {
@@ -80,7 +65,6 @@ export class OrderFlowAggregator {
       didPersistToStore: false
     }
 
-    this._candleQueue.enqueCandle(closedCandle)
     this.activeCandle = null
 
     return closedCandle
