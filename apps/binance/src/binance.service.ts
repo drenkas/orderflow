@@ -11,7 +11,7 @@ import { OrderFlowAggregator } from '@orderflow/utils/orderFlowAggregator'
 import { mergeFootPrintCandles } from '@orderflow/utils/orderFlowUtil'
 import { INTERVALS } from '@shared/utils/intervals'
 import { KlineIntervalMs } from '@shared/constants/intervals'
-import { CACHE_LIMIT, Exchange } from '@shared/constants/exchange'
+import { Exchange } from '@shared/constants/exchange'
 import { IFootPrintClosedCandle } from '@orderflow/dto/orderflow.dto'
 
 @Injectable()
@@ -127,7 +127,9 @@ export class BinanceService {
     }
 
     const closed1mCandles: { [symbol: string]: IFootPrintClosedCandle } = {}
+    const triggeredIntervalsPerSymbol: { [symbol: string]: INTERVALS[] } = {}
 
+    // Process 1m candles and determine triggered intervals
     for (const symbol in this.aggregators) {
       const aggr = this.getOrderFlowAggregator(symbol, this.BASE_INTERVAL)
       const closed1mCandle = aggr.processCandleClosed()
@@ -135,21 +137,21 @@ export class BinanceService {
       if (closed1mCandle) {
         this.candleQueue.enqueCandle(closed1mCandle)
         closed1mCandles[symbol] = closed1mCandle
+
+        const nextOpenTimeMS = 1 + closed1mCandle.closeTimeMs
+        const nextOpenTime = new Date(nextOpenTimeMS)
+        triggeredIntervalsPerSymbol[symbol] = findAllEffectedIntervalsOnCandleClose(nextOpenTime, this.HTF_INTERVALS)
       }
     }
 
-    await this.candleQueue.persistCandlesToStorage({ clearQueue: true })
-
-    for (const symbol in this.aggregators) {
-      const closed1mCandle = closed1mCandles[symbol]
-      if (closed1mCandle) {
-        const nextOpenTimeMS = 1 + closed1mCandle.closeTimeMs
-        const nextOpenTime = new Date(nextOpenTimeMS)
-        const triggeredIntervals: INTERVALS[] = findAllEffectedIntervalsOnCandleClose(nextOpenTime, this.HTF_INTERVALS)
-
-        for (const interval of this.HTF_INTERVALS) {
-          if (triggeredIntervals.includes(interval)) {
-            await this.buildHTFCandle(symbol, interval, closed1mCandle.openTimeMs, closed1mCandle.closeTimeMs)
+    // Process HTF candles
+    for (const interval of this.HTF_INTERVALS) {
+      for (const symbol in closed1mCandles) {
+        if (triggeredIntervalsPerSymbol[symbol].includes(interval)) {
+          const closed1mCandle = closed1mCandles[symbol]
+          const htfCandle = await this.buildHTFCandle(symbol, interval, closed1mCandle.openTimeMs, closed1mCandle.closeTimeMs)
+          if (htfCandle) {
+            this.candleQueue.enqueCandle(htfCandle)
           }
         }
       }
@@ -158,7 +160,7 @@ export class BinanceService {
     await this.candleQueue.persistCandlesToStorage({ clearQueue: true })
   }
 
-  async buildHTFCandle(symbol: string, targetInterval: INTERVALS, openTimeMs: number, closeTimeMs: number) {
+  async buildHTFCandle(symbol: string, targetInterval: INTERVALS, openTimeMs: number, closeTimeMs: number): Promise<IFootPrintClosedCandle | null> {
     const { baseInterval, count } = aggregationIntervalMap[targetInterval]
 
     this.logger.log(`Building a new HTF candle for ${symbol} ${targetInterval}. Will attempt to find and use ${count} ${baseInterval} candles`)
@@ -172,13 +174,15 @@ export class BinanceService {
     if (candles?.length === count) {
       const aggregatedCandle = mergeFootPrintCandles(candles, targetInterval)
       if (aggregatedCandle) {
-        this.candleQueue.enqueCandle(aggregatedCandle)
+        return aggregatedCandle
       }
     } else {
       this.logger.warn(
         `Target candle count ${count} was not met to create a new candle for ${symbol}, ${targetInterval}. Candle closed at ${new Date(closeTimeMs)}`
       )
     }
+
+    return null
   }
 
   private processNewTrades(symbol: string, isBuyerMaker: boolean, positionSize: numberInString, price: numberInString) {
