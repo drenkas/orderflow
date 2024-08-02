@@ -73,11 +73,8 @@ export class BackfillService {
   }
 
   private setupTradeAggregator(): void {
-    const maxRowsInMemory = CACHE_LIMIT
     const intervalSizeMs: number = KlineIntervalMs[INTERVALS.ONE_MINUTE]
-    this.aggregators[this.BASE_SYMBOL] = new OrderFlowAggregator(Exchange.BINANCE, this.BASE_SYMBOL, INTERVALS.ONE_MINUTE, intervalSizeMs, {
-      maxCacheInMemory: maxRowsInMemory
-    })
+    this.aggregators[this.BASE_SYMBOL] = new OrderFlowAggregator(Exchange.BINANCE, this.BASE_SYMBOL, INTERVALS.ONE_MINUTE, intervalSizeMs, {})
   }
 
   private async checkForGaps(): Promise<void> {

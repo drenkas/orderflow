@@ -1,15 +1,11 @@
 import { v4 } from 'uuid'
-import { CandleQueue } from '@orderflow/utils/candleQueue'
 import { getStartOfMinute } from '@orderflow/utils/date'
 import { IFootPrintCandle, IFootPrintClosedCandle, IPriceLevel } from '@orderflow/dto/orderflow.dto'
-import { CACHE_LIMIT } from '@shared/constants/exchange'
 
 export interface OrderFlowAggregatorConfig {
   // Define per-level price precision used to group trades by level
   // (ideally don't use this, instead round to tick size before it reaches the aggregator)
   pricePrecisionDp?: number | null
-  // Defines how many rows to keep in memory before pruning old rows (default is 600)
-  maxCacheInMemory: number
 }
 
 export class OrderFlowAggregator {
@@ -33,7 +29,6 @@ export class OrderFlowAggregator {
     this.intervalSizeMs = intervalSizeMs
 
     this.config = {
-      maxCacheInMemory: CACHE_LIMIT,
       ...config
     }
   }

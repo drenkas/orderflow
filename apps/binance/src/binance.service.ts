@@ -47,7 +47,6 @@ export class BinanceService {
     private readonly binanceWsService: BinanceWebSocketService
   ) {
     this.candleQueue = new CandleQueue(this.databaseService)
-    this
   }
 
   async onModuleInit() {
@@ -115,10 +114,7 @@ export class BinanceService {
         throw new Error(`Unknown ms per interval "${interval}"`)
       }
 
-      const maxRowsInMemory = CACHE_LIMIT
-      this.aggregators[symbol] = new OrderFlowAggregator('binance', symbol, interval, intervalSizeMs, {
-        maxCacheInMemory: maxRowsInMemory
-      })
+      this.aggregators[symbol] = new OrderFlowAggregator('binance', symbol, interval, intervalSizeMs, {})
     }
 
     return this.aggregators[symbol]

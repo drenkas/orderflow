@@ -2,8 +2,6 @@ import { DatabaseService } from '@database/database.service'
 import { IFootPrintClosedCandle } from '@orderflow/dto/orderflow.dto'
 
 export class CandleQueue {
-  private maxCacheInMemory: number = 600
-
   /** Queue of candles that may not yet have reached the DB yet (closed candles) */
   private queue: IFootPrintClosedCandle[] = []
 
