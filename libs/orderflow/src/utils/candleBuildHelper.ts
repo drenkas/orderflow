@@ -5,7 +5,7 @@ export function calculateCandlesNeeded(baseIntervalDurationMs: number, targetInt
   return targetIntervalDurationMs / baseIntervalDurationMs
 }
 
-export function findAllEffectedIntervalsOnCandleClose(date: Date, aggregationIntervals: INTERVALS[]): INTERVALS[] {
+export function findAllEffectedHTFIntervalsOnCandleClose(date: Date, aggregationIntervals: INTERVALS[]): INTERVALS[] {
   const intervals: INTERVALS[] = []
   const minute = date.getMinutes()
   const hour = date.getHours()

@@ -5,7 +5,7 @@ import { BinanceWebSocketService } from './BinanceWebsocketService'
 import { CacheService } from '@cache/cache.service'
 import { DatabaseService } from '@database/database.service'
 import { aggregationIntervalMap } from '@orderflow/constants/aggregation'
-import { findAllEffectedIntervalsOnCandleClose } from '@orderflow/utils/candleBuildHelper'
+import { findAllEffectedHTFIntervalsOnCandleClose } from '@orderflow/utils/candleBuildHelper'
 import { CandleQueue } from '@orderflow/utils/candleQueue'
 import { OrderFlowAggregator } from '@orderflow/utils/orderFlowAggregator'
 import { mergeFootPrintCandles } from '@orderflow/utils/orderFlowUtil'
@@ -140,9 +140,12 @@ export class BinanceService {
 
         const nextOpenTimeMS = 1 + closed1mCandle.closeTimeMs
         const nextOpenTime = new Date(nextOpenTimeMS)
-        triggeredIntervalsPerSymbol[symbol] = findAllEffectedIntervalsOnCandleClose(nextOpenTime, this.HTF_INTERVALS)
+        triggeredIntervalsPerSymbol[symbol] = findAllEffectedHTFIntervalsOnCandleClose(nextOpenTime, this.HTF_INTERVALS)
       }
     }
+
+    // Persist 1m candles
+    await this.candleQueue.persistCandlesToStorage({ clearQueue: true })
 
     // Process HTF candles
     for (const interval of this.HTF_INTERVALS) {
@@ -155,9 +158,8 @@ export class BinanceService {
           }
         }
       }
+      await this.candleQueue.persistCandlesToStorage({ clearQueue: true })
     }
-
-    await this.candleQueue.persistCandlesToStorage({ clearQueue: true })
   }
 
   async buildHTFCandle(symbol: string, targetInterval: INTERVALS, openTimeMs: number, closeTimeMs: number): Promise<IFootPrintClosedCandle | null> {
