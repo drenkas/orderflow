@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { Cron, CronExpression } from '@nestjs/schedule'
-import { numberInString, WsMessageAggTradeRaw } from 'binance'
+import { numberInString, USDMClient, WsMessageAggTradeRaw } from 'binance'
 import { BinanceWebSocketService } from './BinanceWebsocketService'
 import { CacheService } from '@cache/cache.service'
 import { DatabaseService } from '@database/database.service'
@@ -17,7 +17,7 @@ import { IFootPrintClosedCandle } from '@orderflow/dto/orderflow.dto'
 @Injectable()
 export class BinanceService {
   private logger: Logger = new Logger(BinanceService.name)
-  private symbols: string[] = process.env.SYMBOLS?.split(',') ?? ['BTCUSDT']
+  private selectedSymbols: string[] = process.env.SYMBOLS?.split(',') ?? []
   private readonly BASE_INTERVAL = INTERVALS.ONE_MINUTE
   private readonly HTF_INTERVALS = [
     INTERVALS.FIVE_MINUTES,
@@ -32,6 +32,8 @@ export class BinanceService {
     INTERVALS.ONE_WEEK,
     INTERVALS.ONE_MONTH
   ]
+
+  private binanceRest = new USDMClient({})
 
   private expectedConnections: Map<string, Date> = new Map()
   private openConnections: Map<string, Date> = new Map()
@@ -51,23 +53,7 @@ export class BinanceService {
 
   async onModuleInit() {
     this.logger.log(`Starting Binance Orderflow service for Live candle building from raw trades`)
-
-    await this.loadSymbols()
     await this.subscribeToWS()
-  }
-
-  async loadSymbols(): Promise<void> {
-    try {
-      const exchangeSymbolTickSizes: { [symbol: string]: string } = await this.cacheService.getSymbols(Exchange.BINANCE)
-
-      if (Object.keys(exchangeSymbolTickSizes).length > 0) {
-        this.symbols = Object.keys(exchangeSymbolTickSizes)
-      } else {
-        this.logger.warn('No symbols returned from cache service, using default symbols')
-      }
-    } catch (error) {
-      this.logger.error('Failed to fetch symbols:', error)
-    }
   }
 
   @Cron(CronExpression.EVERY_HOUR)
@@ -76,16 +62,21 @@ export class BinanceService {
   }
 
   private async subscribeToWS(): Promise<void> {
-    for (let i = 0; i < this.symbols.length; i++) {
-      const response = this.binanceWsService.subscribeToTrades(this.symbols[i], 'usdm')
+    const exchangeInfo = await this.binanceRest.getExchangeInfo()
+    const symbols = this.selectedSymbols.length > 0 ? this.selectedSymbols : exchangeInfo.symbols.map(({ symbol }) => symbol)
+
+    this.binanceWsService.initWebSocket(exchangeInfo)
+
+    for (let i = 0; i < symbols.length; i++) {
+      const response = this.binanceWsService.subscribeToTrades(symbols[i], 'usdm')
 
       const wsKey = response.wsKey
 
       if (wsKey) {
-        this.wsKeyContextStore[wsKey] = { symbol: this.symbols[i] }
+        this.wsKeyContextStore[wsKey] = { symbol: symbols[i] }
         this.expectedConnections.set(wsKey, new Date())
       } else {
-        this.logger.error('no wskey? ' + { symbol: this.symbols[i], wsKey })
+        this.logger.error('no wskey? ' + { symbol: symbols[i], wsKey })
       }
     }
 

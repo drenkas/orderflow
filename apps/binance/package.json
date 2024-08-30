@@ -22,7 +22,6 @@
     "@nestjs/platform-express": "^10.0.0",
     "@nestjs/schedule": "^3.0.2",
     "@nestjs/typeorm": "^10.0.0",
-    "@tsquant/exchangeapi": "^0.0.31",
     "binance": "^2.8.8",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.0",

@@ -11,7 +11,7 @@ import { calculateCandlesNeeded } from '@orderflow/utils/candleBuildHelper'
 import { adjustBackfillEndDate, adjustBackfillStartDate, getTimestampStartOfDay } from '@orderflow/utils/date'
 import { OrderFlowAggregator } from '@orderflow/utils/orderFlowAggregator'
 import { mergeFootPrintCandles } from '@orderflow/utils/orderFlowUtil'
-import { CACHE_LIMIT, Exchange } from '@shared/constants/exchange'
+import { Exchange } from '@shared/constants/exchange'
 import { INTERVALS, KlineIntervalMs, KlineIntervalTimes } from '@shared/utils/intervals'
 
 @Injectable()

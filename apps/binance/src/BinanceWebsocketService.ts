@@ -2,8 +2,8 @@
 /* eslint-disable @typescript-eslint/no-empty-function */
 import { Injectable } from '@nestjs/common'
 import { Observable, Subject } from 'rxjs'
-import { DefaultLogger, WebsocketClient, WsMessageAggTradeRaw } from 'binance'
-import { ExchangeAPI, getExchangeLayer } from '@tsquant/exchangeapi'
+import { DefaultLogger, FuturesExchangeInfo, WebsocketClient, WsMessageAggTradeRaw } from 'binance'
+import { getRoundedAssetPrice } from '@shared/utils/binance'
 
 /** Disable almost all internal logging from the binance ws lib */
 const logger = {
@@ -17,14 +17,9 @@ const logger = {
 @Injectable()
 export class BinanceWebSocketService {
   private ws: WebsocketClient
-  private exchangeAPI: ExchangeAPI
   private tradeUpdates$: Subject<WsMessageAggTradeRaw> = new Subject()
   private reconnect$: Subject<string> = new Subject()
   private connected$: Subject<string> = new Subject()
-
-  constructor() {
-    this.initWebSocket()
-  }
 
   get reconnected(): Observable<string> {
     return this.reconnect$.asObservable()
@@ -38,20 +33,11 @@ export class BinanceWebSocketService {
     return this.tradeUpdates$.asObservable()
   }
 
-  private initWebSocket(): void {
+  initWebSocket(exchangeInfo: FuturesExchangeInfo): void {
     this.ws = new WebsocketClient({ pongTimeout: 1000 * 30 }, logger)
-    this.exchangeAPI = getExchangeLayer({
-      accountId: 'doesntMatter',
-      exchange: 'paper_binance',
-      expectedMarginMode: 'CROSS',
-      quoteBalanceAsset: 'USDT'
-    })
 
-    // Ensures exchangeAPI is refreshed
-    this.exchangeAPI.initState()
-
-    this.ws.on('message', async (message: WsMessageAggTradeRaw) => {
-      const roundedPrice = await this.exchangeAPI.getRoundedAssetPrice(message.s, Number(message.p))
+    this.ws.on('message', (message: WsMessageAggTradeRaw) => {
+      const roundedPrice = getRoundedAssetPrice(message.s, Number(message.p), exchangeInfo)
       this.tradeUpdates$.next({
         ...message,
         p: roundedPrice
