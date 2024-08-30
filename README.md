@@ -52,13 +52,6 @@ The system processes live trade data in real-time, aggregating it into 1-minute 
 
 These services will continuously run, processing live trade data from their respective exchanges.
 
-### Binance Backfill
-
-For historical data processing:
-
-1. Obtain CSV files from Binance's market data: https://data.binance.vision/?prefix=data/futures/um/daily/
-2. Run the Binance Backfill service, specifying start and end dates.
-
 ## How It Works
 
 ### Binance and Bybit Services
@@ -73,15 +66,21 @@ Key components:
 - `OrderFlowAggregator`: Aggregates trades into candles.
 - `CandleQueue`: Manages the queue of candles to be persisted to the database.
 
-### Binance Backfill
+## Binance Backfill
 
 For historical data processing:
 
-Obtain CSV files from Binance's market data: https://data.binance.vision/?prefix=data/futures/um/daily/
-Set the following environment variables:
+1. Set the following environment variables:
+   - `SYMBOLS`: Specify the trading pair(s) for which you want to process historical data (comma-separated if multiple)
+   - `BACKFILL_START_AT`: Start timestamp for backfill data processing
+   - `BACKFILL_END_AT`: End timestamp for backfill data processing
 
-- `BACKFILL_START_AT`: Start timestamp for backfill data processing
-- `BACKFILL_END_AT`: End timestamp for backfill data processing
+2. Run the Binance Backfill service:
+   ```
+   docker-compose up binance-backfill
+   ```
+
+The service will automatically download and process the necessary CSV files from [Binance Market Data](https://data.binance.vision/?prefix=data/futures/um/daily/) for the specified symbol(s) and date range, constructing footprint candles from the historical data.
 
 
 Run the Binance Backfill service:
