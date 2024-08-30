@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common'
 import { Cron, CronExpression } from '@nestjs/schedule'
-import { numberInString, USDMClient, WsMessageAggTradeRaw } from 'binance'
+import { USDMClient, WsMessageAggTradeRaw } from 'binance'
 import { BinanceWebSocketService } from './BinanceWebsocketService'
 import { DatabaseService } from '@database/database.service'
 import { aggregationIntervalMap } from '@orderflow/constants/aggregation'
@@ -173,7 +173,7 @@ export class BinanceService {
     return null
   }
 
-  private processNewTrades(symbol: string, isBuyerMaker: boolean, positionSize: numberInString, price: numberInString) {
+  private processNewTrades(symbol: string, isBuyerMaker: boolean, positionSize: string, price: string) {
     if (!this.didFinishConnectingWS) {
       return
     }
