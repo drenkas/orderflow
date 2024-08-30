@@ -1,73 +1,106 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="200" alt="Nest Logo" /></a>
-</p>
+# Orderflow
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+This project offers a solution for collecting, processing, and analysing high-frequency orderflow data from major cryptocurrency exchanges. Built with Node.js/TypeScript and leveraging the NestJS framework, it comprises three specialised applications:
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://coveralls.io/github/nestjs/nest?branch=master" target="_blank"><img src="https://coveralls.io/repos/github/nestjs/nest/badge.svg?branch=master#9" alt="Coverage" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+1. Real-time data collection from **Binance futures market**.
+2. Real-time data collection from **Bybit**.
+3. Historical data processing for **Binance**.
 
-## Description
-
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+The system processes live trade data in real-time, aggregating it into 1-minute Footprint candles and subsequently constructing higher timeframe Footprint candles. This approach offers a granular view of order flow, volume, and price action, providing deep insights into market dynamics. The resulting data is important for developing advanced trading strategies, performing detailed market analysis, and powering sophisticated algorithmic trading systems.
 
 ## Installation
 
-```bash
-$ yarn install
-```
+1. Clone the repository:
+   ```
+   git clone https://github.com/focus1691/orderflow
+   cd orderflow
+   ```
 
-## Running the app
+2. Install dependencies:
+   ```
+   yarn install
+   ```
 
-```bash
-# development
-$ yarn run start
+3. Set up a PostgreSQL TimescaleDB instance (if not already running):
+   ```
+   docker run -d --name timescaledb -p 5433:5432 -e POSTGRES_PASSWORD=password timescale/timescaledb-ha:pg14-latest
+   ```
 
-# watch mode
-$ yarn run start:dev
+4. Set environment variables:
+   - `DB_HOST`
+   - `DB_PORT`
+   - `DB_USERNAME`
+   - `DB_PASSWORD`
+   - `DB_NAME`
+   - `SYMBOLS` (Comma-separated list of trading pairs. Defaults to all exchange symbols if not explicitly set)
 
-# production mode
-$ yarn run start:prod
-```
+## Usage
 
-## Test
+### Binance and Bybit Live Data Processing
 
-```bash
-# unit tests
-$ yarn run test
+1. Build the Docker images:
+   ```
+   docker-compose build binance
+   docker-compose build bybit
+   ```
 
-# e2e tests
-$ yarn run test:e2e
+2. Run the services:
+   ```
+   docker-compose up -d binance
+   docker-compose up -d bybit
+   ```
 
-# test coverage
-$ yarn run test:cov
-```
+These services will continuously run, processing live trade data from their respective exchanges.
 
-## Support
+### Binance Backfill
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+For historical data processing:
 
-## Stay in touch
+1. Obtain CSV files from Binance's market data: https://data.binance.vision/?prefix=data/futures/um/daily/
+2. Run the Binance Backfill service, specifying start and end dates.
 
-- Author - [Kamil Myśliwiec](https://kamilmysliwiec.com)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+## How It Works
 
-## License
+### Binance and Bybit Services
 
-Nest is [MIT licensed](LICENSE).
+1. Connect to exchange websockets for live trade data.
+2. Aggregate raw trades into 1-minute candles.
+3. Build higher timeframe candles from 1-minute candles.
+4. Store processed data in TimescaleDB.
+
+Key components:
+- `BinanceService`/`BybitService`: Main service handling websocket connections and data processing.
+- `OrderFlowAggregator`: Aggregates trades into candles.
+- `CandleQueue`: Manages the queue of candles to be persisted to the database.
+
+### Binance Backfill
+
+For historical data processing:
+
+Obtain CSV files from Binance's market data: https://data.binance.vision/?prefix=data/futures/um/daily/
+Set the following environment variables:
+
+- `BACKFILL_START_AT`: Start timestamp for backfill data processing
+- `BACKFILL_END_AT`: End timestamp for backfill data processing
+
+
+Run the Binance Backfill service:
+   ```
+   yarn start:binance-backfill
+   ```
+
+The Binance Backfill service will process historical data for the specified date range and terminate upon completion.
+
+## Dependencies
+
+- NestJS
+- `binance` and `bybit-api` libraries by [@tiagosiebler](https://github.com/tiagosiebler).
+- PostgreSQL with TimescaleDB extension.
+
+## Notes
+
+- Ensure the TimescaleDB instance is running before starting the services.
+- The Binance Backfill service is not designed for continuous operation and will terminate upon completion.
+- For advanced analysis of the generated orderflow data, consider using the [chart-patterns library](https://github.com/focus1691/chart-patterns), which provides indicators for:
+   - **Stacked Imbalances:** Identify stacks of buying/selling imbalances on the price level.
+   - **High Volume Nodes:** Pinpoint areas where significant trade volume occurred.
