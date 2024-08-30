@@ -89,7 +89,7 @@ export class BinanceService {
     })
 
     this.binanceWsService.tradeUpdates.subscribe((trade: WsMessageAggTradeRaw) => {
-      this.processNewTrades(trade.s, trade.m, trade.q, trade.p)
+      this.processNewTrades(trade.s, trade.m, trade.q as string, trade.p as string)
     })
   }
 
