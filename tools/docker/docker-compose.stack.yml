@@ -4,15 +4,6 @@ networks:
   timescaledb:
 
 services:
-  cache:
-    image: redis:6.2-alpine
-    restart: always
-    ports:
-      - '6379:6379'
-    command: redis-server --save 20 1 --loglevel warning --requirepass redispass123
-    volumes:
-      - cache:/data
-
   timescaledb:
     image: timescale/timescaledb:latest-pg14
     command: postgres -c shared_preload_libraries=timescaledb
@@ -29,7 +20,5 @@ services:
       - timescale-db-volume:/var/lib/postgresql/data/timescaledb
 
 volumes:
-  cache:
-    driver: local
   timescale-db-volume:
     external: true

@@ -2,7 +2,6 @@ import { Injectable, Logger } from '@nestjs/common'
 import { Cron, CronExpression } from '@nestjs/schedule'
 import { numberInString, USDMClient, WsMessageAggTradeRaw } from 'binance'
 import { BinanceWebSocketService } from './BinanceWebsocketService'
-import { CacheService } from '@cache/cache.service'
 import { DatabaseService } from '@database/database.service'
 import { aggregationIntervalMap } from '@orderflow/constants/aggregation'
 import { findAllEffectedHTFIntervalsOnCandleClose } from '@orderflow/utils/candleBuildHelper'
@@ -43,11 +42,7 @@ export class BinanceService {
   private aggregators: { [symbol: string]: OrderFlowAggregator } = {}
   private candleQueue: CandleQueue
 
-  constructor(
-    private readonly cacheService: CacheService,
-    private readonly databaseService: DatabaseService,
-    private readonly binanceWsService: BinanceWebSocketService
-  ) {
+  constructor(private readonly databaseService: DatabaseService, private readonly binanceWsService: BinanceWebSocketService) {
     this.candleQueue = new CandleQueue(this.databaseService)
   }
 

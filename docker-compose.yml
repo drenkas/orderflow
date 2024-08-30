@@ -6,11 +6,10 @@ services:
       context: .
       dockerfile: ./apps/binance/Dockerfile
     environment:
-      - REDIS_URI=redis://host.docker.internal:6379
       - DB_HOST=host.docker.internal
       - DB_PORT=5433
       - DB_USERNAME=postgres
-      - DB_PASSWORD=ZXsPxuFQJzK1LAmA
+      - DB_PASSWORD=password
       - DB_NAME=postgres
       - SYMBOLS=${SYMBOLS}
     extra_hosts:
@@ -24,11 +23,10 @@ services:
       context: .
       dockerfile: ./apps/bybit/Dockerfile
     environment:
-      - REDIS_URI=redis://host.docker.internal:6379
       - DB_HOST=host.docker.internal
       - DB_PORT=5433
       - DB_USERNAME=postgres
-      - DB_PASSWORD=ZXsPxuFQJzK1LAmA
+      - DB_PASSWORD=password
       - DB_NAME=postgres
       - SYMBOLS=${SYMBOLS}
     extra_hosts:

@@ -6,10 +6,9 @@ import { DatabaseModule } from '@database'
 import { DatabaseConfiguration } from '@database/ormconfig'
 import { BinanceService } from './binance.service'
 import { BinanceWebSocketService } from './BinanceWebsocketService'
-import { CacheModule } from '@cache/cache.module'
 
 @Module({
-  imports: [ConfigModule.forRoot({ isGlobal: true }), ScheduleModule.forRoot(), TypeOrmModule.forRoot(DatabaseConfiguration), DatabaseModule, CacheModule],
+  imports: [ConfigModule.forRoot({ isGlobal: true }), ScheduleModule.forRoot(), TypeOrmModule.forRoot(DatabaseConfiguration), DatabaseModule],
   providers: [BinanceService, BinanceWebSocketService]
 })
 export class BinanceModule {}
