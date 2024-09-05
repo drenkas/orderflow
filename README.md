@@ -52,9 +52,7 @@ The system processes live trade data in real-time, aggregating it into 1-minute 
 
 ## How It Works
 
-### Binance and Bybit Services
-
-These services run continuously, aggregating live trade data to construct Footprint candles through the following steps:
+Binance and Bybit services run continuously, aggregating live trade data to construct Footprint candles through the following steps:
 
 1. Connect to exchange WebSockets to receive live trade data.
 2. Aggregate raw trades into 1-minute candles.
