@@ -1,12 +1,12 @@
 # Orderflow
 
-This project offers a solution for collecting, processing, and analysing orderflow data from major cryptocurrency exchanges. Built with Node.js/TypeScript and leveraging the NestJS framework, it comprises three applications:
+This project offers a solution for generating orderflow data from Binance and Bybit. Built with Node.js/TypeScript and leveraging the NestJS framework, it comprises three applications:
 
 1. Real-time data collection from **Binance Perps**.
 2. Real-time data collection from **Bybit Perps**.
 3. Historical data processing for **Binance**.
 
-The system processes live trade data in real-time, aggregating it into 1-minute Footprint candles and subsequently constructing higher timeframe Footprint candles. The resulting data is important to see the underlying trade information that is available on each candle.
+The system processes live trade data in real-time, aggregating it into 1-minute Footprint candles and then building higher timeframe Footprint candles. This data is crucial for revealing the underlying trade information associated with each candle.
 
 ## Installation
 
@@ -21,18 +21,18 @@ The system processes live trade data in real-time, aggregating it into 1-minute 
    yarn install
    ```
 
-3. Set up a PostgreSQL TimescaleDB instance (if not already running):
+3. Set up a PostgreSQL TimescaleDB instance (Required):
    ```
    docker run -d --name timescaledb -p 5433:5432 -e POSTGRES_PASSWORD=password timescale/timescaledb-ha:pg14-latest
    ```
 
-4. Set environment variables:
+4. Configure environment variables:
    - `DB_HOST`
    - `DB_PORT`
    - `DB_USERNAME`
    - `DB_PASSWORD`
    - `DB_NAME`
-   - `SYMBOLS` (Comma-separated list of trading pairs. Defaults to all exchange symbols if not explicitly set)
+   - `SYMBOLS` (Comma-separated list of trading pairs. Defaults to all exchange symbols)
 
 ## Usage
 
