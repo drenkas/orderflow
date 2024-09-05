@@ -32,7 +32,7 @@ The system processes live trade data in real-time, aggregating it into 1-minute 
    - `DB_USERNAME`
    - `DB_PASSWORD`
    - `DB_NAME`
-   - `SYMBOLS` (Comma-separated list of trading pairs. Defaults to all exchange symbols)
+   - `SYMBOLS` (CSV. Defaults to all exchange symbols)
 
 ## Usage
 
@@ -73,7 +73,7 @@ For historical data processing:
    yarn start:binance-backfill
    ```
 
-The service will automatically download and process the necessary CSV files from [Binance Market Data](https://data.binance.vision/?prefix=data/futures/um/daily/) for the specified symbol(s) and date range, constructing footprint candles from the historical data.
+The service automatically downloads and processes the required CSV files from [Binance Market Data](https://data.binance.vision/?prefix=data/futures/um/daily/) for the specified symbols and date range, creating footprint candles from the historical data.
 
 ## Dependencies
 
