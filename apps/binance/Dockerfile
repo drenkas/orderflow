@@ -2,9 +2,6 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-# Copy .npmrc file for private package access
-COPY .npmrc ./
-
 # Copy package.json and yarn.lock files
 COPY apps/binance/package.json ./package.json
 COPY apps/binance/yarn.lock ./yarn.lock
