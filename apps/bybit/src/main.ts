@@ -1,7 +1,10 @@
+import { Logger } from '@nestjs/common'
 import { NestFactory } from '@nestjs/core'
 import { BybitModule } from './bybit.module'
 
 async function bootstrap() {
+  Logger.log(new Date(), `Starting apps/binance...`, 'Startup')
+
   const app = await NestFactory.create(BybitModule)
 
   setupExceptionCatchers()
@@ -10,12 +13,12 @@ async function bootstrap() {
 
 function setupExceptionCatchers() {
   process.on('uncaughtException', (e) => {
-    console.error(new Date(), 'unhandled exception: ', e?.stack, e)
+    Logger.error(new Date(), 'unhandled exception: ', e?.stack, e)
   })
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   process.on('unhandledRejection', (e: any, p) => {
-    console.error(new Date(), 'unhandled rejection: ', e?.stack, e, p)
+    Logger.error(new Date(), 'unhandled rejection: ', e?.stack, e, p)
   })
 }
 
