@@ -1,12 +1,12 @@
 # Orderflow
 
-This project offers a solution for collecting, processing, and analysing high-frequency orderflow data from major cryptocurrency exchanges. Built with Node.js/TypeScript and leveraging the NestJS framework, it comprises three specialised applications:
+This project offers a solution for collecting, processing, and analysing orderflow data from major cryptocurrency exchanges. Built with Node.js/TypeScript and leveraging the NestJS framework, it comprises three applications:
 
-1. Real-time data collection from **Binance futures market**.
-2. Real-time data collection from **Bybit**.
+1. Real-time data collection from **Binance Perps**.
+2. Real-time data collection from **Bybit Perps**.
 3. Historical data processing for **Binance**.
 
-The system processes live trade data in real-time, aggregating it into 1-minute Footprint candles and subsequently constructing higher timeframe Footprint candles. This approach offers a granular view of order flow, volume, and price action, providing deep insights into market dynamics. The resulting data is important for developing advanced trading strategies, performing detailed market analysis, and powering sophisticated algorithmic trading systems.
+The system processes live trade data in real-time, aggregating it into 1-minute Footprint candles and subsequently constructing higher timeframe Footprint candles. The resulting data is important to see the underlying trade information that is available on each candle.
 
 ## Installation
 
@@ -50,21 +50,16 @@ The system processes live trade data in real-time, aggregating it into 1-minute 
    docker-compose up -d bybit
    ```
 
-These services will continuously run, processing live trade data from their respective exchanges.
-
 ## How It Works
 
 ### Binance and Bybit Services
 
-1. Connect to exchange websockets for live trade data.
-2. Aggregate raw trades into 1-minute candles.
-3. Build higher timeframe candles from 1-minute candles.
-4. Store processed data in TimescaleDB.
+These services run continuously, aggregating live trade data to construct Footprint candles through the following steps:
 
-Key components:
-- `BinanceService`/`BybitService`: Main service handling websocket connections and data processing.
-- `OrderFlowAggregator`: Aggregates trades into candles.
-- `CandleQueue`: Manages the queue of candles to be persisted to the database.
+1. Connect to exchange WebSockets to receive live trade data.
+2. Aggregate raw trades into 1-minute candles.
+3. Construct higher timeframe candles from the 1-minute candles.
+4. Store the processed data in TimescaleDB.
 
 ## Binance Backfill
 
@@ -77,18 +72,10 @@ For historical data processing:
 
 2. Run the Binance Backfill service:
    ```
-   docker-compose up binance-backfill
-   ```
-
-The service will automatically download and process the necessary CSV files from [Binance Market Data](https://data.binance.vision/?prefix=data/futures/um/daily/) for the specified symbol(s) and date range, constructing footprint candles from the historical data.
-
-
-Run the Binance Backfill service:
-   ```
    yarn start:binance-backfill
    ```
 
-The Binance Backfill service will process historical data for the specified date range and terminate upon completion.
+The service will automatically download and process the necessary CSV files from [Binance Market Data](https://data.binance.vision/?prefix=data/futures/um/daily/) for the specified symbol(s) and date range, constructing footprint candles from the historical data.
 
 ## Dependencies
 
