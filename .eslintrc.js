@@ -131,7 +131,7 @@ module.exports = {
     'padded-blocks': [2, 'never'],
     quotes: [2, 'single', { avoidEscape: true, allowTemplateLiterals: true }],
     'rest-spread-spacing': [2, 'never'],
-    semi: [2, 'never'],
+    'semi': [2, 'always'],
     'semi-spacing': [2, { before: false, after: true }],
     'space-before-blocks': [2, 'always'],
     'space-before-function-paren': 'off',

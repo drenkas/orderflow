@@ -1,4 +1,4 @@
-import { INTERVALS } from '@shared/utils/intervals'
+import { INTERVALS } from '@shared/utils/intervals';
 
 export const intervalToMinutesMap = Object.freeze({
   '5m': 5,
@@ -12,7 +12,7 @@ export const intervalToMinutesMap = Object.freeze({
   '8h': 480,
   '12h': 720,
   '1d': 1440
-})
+});
 
 export const aggregationIntervalMap = Object.freeze({
   [INTERVALS.FIVE_MINUTES]: { baseInterval: INTERVALS.ONE_MINUTE, count: 5 },
@@ -26,4 +26,4 @@ export const aggregationIntervalMap = Object.freeze({
   [INTERVALS.ONE_DAY]: { baseInterval: INTERVALS.ONE_HOUR, count: 2 },
   [INTERVALS.ONE_WEEK]: { baseInterval: INTERVALS.ONE_DAY, count: 7 },
   [INTERVALS.ONE_MONTH]: { baseInterval: INTERVALS.ONE_WEEK, count: 4 }
-})
+});

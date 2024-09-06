@@ -1,61 +1,61 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /* eslint-disable indent */
-import { Entity, PrimaryGeneratedColumn, Column, Index } from 'typeorm'
-import { IPriceLevel } from '../../../orderflow/src/dto/orderflow.dto'
+import { Entity, PrimaryGeneratedColumn, Column, Index } from 'typeorm';
+import { IPriceLevel } from '../../../orderflow/src/dto/orderflow.dto';
 
-export const CandleUniqueColumns = ['exchange', 'symbol', 'interval', 'openTime']
+export const CandleUniqueColumns = ['exchange', 'symbol', 'interval', 'openTime'];
 
 @Entity({ name: 'footprint_candle' })
 @Index(CandleUniqueColumns, { unique: true })
 export class FootPrintCandle {
   @PrimaryGeneratedColumn()
-  id: number
+  id: number;
 
   @Column({ type: 'timestamptz' })
-  openTime: Date
+  openTime: Date;
 
   @Column({ type: 'timestamptz' })
-  closeTime: Date
+  closeTime: Date;
 
   @Column({ type: 'bigint' })
-  openTimeMs: number
+  openTimeMs: number;
 
   @Column({ type: 'bigint' })
-  closeTimeMs: number
+  closeTimeMs: number;
 
   @Column()
-  exchange: string
+  exchange: string;
 
   @Column()
-  interval: string
+  interval: string;
 
   @Column()
-  symbol: string
+  symbol: string;
 
   @Column('double precision')
-  volumeDelta: number
+  volumeDelta: number;
 
   @Column('double precision')
-  volume: number
+  volume: number;
 
   @Column('double precision', { default: 0 })
-  aggressiveBid: number
+  aggressiveBid: number;
 
   @Column('double precision', { default: 0 })
-  aggressiveAsk: number
+  aggressiveAsk: number;
 
   @Column('double precision')
-  high: number
+  high: number;
 
   @Column('double precision')
-  low: number
+  low: number;
 
   @Column('double precision')
-  close: number
+  close: number;
 
   // Storing bid and ask as JSON
   @Column('jsonb', { default: {} })
   // @OneToMany(() => FootPrintCandleLevel, (level) => level.closeTime)
   // @JoinColumn()
-  priceLevels: Record<string, IPriceLevel>
+  priceLevels: Record<string, IPriceLevel>;
 }

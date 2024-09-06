@@ -1,4 +1,4 @@
-export const CACHE_LIMIT = 600
+export const CACHE_LIMIT = 600;
 
 export enum Exchange {
   BINANCE = 'binance',

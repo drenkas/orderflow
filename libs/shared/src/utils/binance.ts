@@ -1,23 +1,23 @@
-import { FuturesExchangeInfo, SymbolPriceFilter } from 'binance'
-import { roundToTickSize } from '@shared/utils/math'
+import { FuturesExchangeInfo, SymbolPriceFilter } from 'binance';
+import { roundToTickSize } from '@shared/utils/math';
 
 export function getRoundedAssetPrice(symbol: string, assetPrice: number, exchangeInfo: FuturesExchangeInfo): number {
-  const priceFilter = getBinancePriceFilter(exchangeInfo, symbol)
-  const tickSize = priceFilter?.tickSize ?? 2 // default to 2 if not found
+  const priceFilter = getBinancePriceFilter(exchangeInfo, symbol);
+  const tickSize = priceFilter?.tickSize ?? 2; // default to 2 if not found
 
-  return roundToTickSize(assetPrice, String(tickSize))
+  return roundToTickSize(assetPrice, String(tickSize));
 }
 
 export function getBinancePriceFilter(exchangeInfo: FuturesExchangeInfo, symbol: string): SymbolPriceFilter | null {
-  const specs = exchangeInfo.symbols.find((sym) => sym.symbol === symbol)
+  const specs = exchangeInfo.symbols.find((sym) => sym.symbol === symbol);
   if (!specs) {
-    return null
+    return null;
   }
 
-  const priceFilter = specs.filters.find((filter) => filter.filterType === 'PRICE_FILTER') as SymbolPriceFilter
+  const priceFilter = specs.filters.find((filter) => filter.filterType === 'PRICE_FILTER') as SymbolPriceFilter;
 
   if (!priceFilter) {
-    return null
+    return null;
   }
-  return priceFilter
+  return priceFilter;
 }

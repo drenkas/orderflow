@@ -1,7 +1,7 @@
-require('dotenv').config()
+require('dotenv').config();
 
-import { DataSource, DataSourceOptions } from 'typeorm'
-import { FootPrintCandle } from '@database/entity/footprint_candle.entity'
+import { DataSource, DataSourceOptions } from 'typeorm';
+import { FootPrintCandle } from '@database/entity/footprint_candle.entity';
 
 export const DatabaseConfiguration: DataSourceOptions = {
   type: 'postgres',
@@ -12,6 +12,6 @@ export const DatabaseConfiguration: DataSourceOptions = {
   database: process.env.DB_NAME,
   entities: [FootPrintCandle],
   synchronize: false
-}
+};
 
-export const AppDataSource = new DataSource(DatabaseConfiguration)
+export const AppDataSource = new DataSource(DatabaseConfiguration);

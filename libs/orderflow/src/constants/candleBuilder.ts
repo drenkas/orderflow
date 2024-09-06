@@ -1,4 +1,4 @@
-import { INTERVALS } from '@shared/utils/intervals'
+import { INTERVALS } from '@shared/utils/intervals';
 
 export const CANDLE_BUILDER_RULES = Object.freeze({
   [INTERVALS.ONE_MINUTE]: [
@@ -102,10 +102,10 @@ export const CANDLE_BUILDER_RULES = Object.freeze({
     {
       target: INTERVALS.ONE_MONTH,
       condition: (timestamp: number) => {
-        const date = new Date(timestamp)
-        return date.getUTCMinutes() + date.getUTCHours() + (date.getUTCDate() - 1) === 0
+        const date = new Date(timestamp);
+        return date.getUTCMinutes() + date.getUTCHours() + (date.getUTCDate() - 1) === 0;
       }
     }
   ],
   [INTERVALS.ONE_MONTH]: []
-})
+});

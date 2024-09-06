@@ -62,8 +62,8 @@ export enum FundingRateIntervals {
 export const KlineIntervalTimes: Record<
   KlineIntervals,
   {
-    duration: any
-    amount: any
+    duration: any;
+    amount: any;
   }
 > = {
   [KlineIntervals.ONE_MIN]: { duration: 'minutes', amount: 1 },
@@ -78,10 +78,10 @@ export const KlineIntervalTimes: Record<
   [KlineIntervals.ONE_DAY]: { duration: 'd', amount: 1 },
   [KlineIntervals.ONE_WEEK]: { duration: 'week', amount: 1 },
   [KlineIntervals.ONE_MONTH]: { duration: 'month', amount: 1 }
-}
+};
 
-export const ONE_MINUTE_MS = 60 * 1000
-export const ONE_HOUR_MS = ONE_MINUTE_MS * 60
+export const ONE_MINUTE_MS = 60 * 1000;
+export const ONE_HOUR_MS = ONE_MINUTE_MS * 60;
 
 export const KlineIntervalMs: Record<KlineIntervals, number> = {
   [KlineIntervals.ONE_MIN]: ONE_MINUTE_MS,
@@ -96,4 +96,4 @@ export const KlineIntervalMs: Record<KlineIntervals, number> = {
   [KlineIntervals.ONE_DAY]: ONE_HOUR_MS * 24,
   [KlineIntervals.ONE_WEEK]: ONE_HOUR_MS * 24 * 7,
   [KlineIntervals.ONE_MONTH]: 2591999999 + 1 // 1 month interval size used by binance 1569887999999 - 1567296000000
-}
+};

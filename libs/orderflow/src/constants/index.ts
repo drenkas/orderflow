@@ -1,1 +1,1 @@
-export * from './candleBuilder'
+export * from './candleBuilder';
