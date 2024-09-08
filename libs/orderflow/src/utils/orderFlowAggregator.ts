@@ -102,20 +102,18 @@ export class OrderFlowAggregator {
     return candle;
   }
 
-  public processNewTrades(isBuyerMaker: boolean, assetQty: number, price: number) {
+  public processNewTrades(isPassiveBid: boolean, assetQty: number, price: number) {
     if (!this.activeCandle) {
       this.createNewCandle();
-      return this.processNewTrades(isBuyerMaker, assetQty, price);
+      return this.processNewTrades(isPassiveBid, assetQty, price);
     }
 
     const tradeQty = assetQty;
 
-    // TODO: asset qty or notional value or both?
-    // https://t.me/c/1819709460/8295/17236
     this.activeCandle.volume += tradeQty;
 
-    // Determine which side (bid/ask) and delta direction based on isBuyerMM
-    const tradeQtyDelta = isBuyerMaker ? -tradeQty : tradeQty;
+    // Determine which side (bid/ask) and delta direction based on whether it's an aggressive or passive bid
+    const tradeQtyDelta = isPassiveBid ? -tradeQty : tradeQty;
 
     // Update delta
     this.activeCandle.volumeDelta += tradeQtyDelta;
@@ -123,7 +121,6 @@ export class OrderFlowAggregator {
     const precisionTrimmedPrice = this.config.pricePrecisionDp ? +price.toFixed(this.config.pricePrecisionDp) : price;
 
     // Initialise the price level, if it doesn't exist yet
-    // TODO: do price step size rounding here
     if (!this.activeCandle.priceLevels[precisionTrimmedPrice]) {
       this.activeCandle.priceLevels[precisionTrimmedPrice] = {
         volSumAsk: 0,
@@ -131,12 +128,12 @@ export class OrderFlowAggregator {
       };
     }
 
-    // If buyer is maker, buy is a limit order, seller is a market order (low ask), seller is aggressive ask
-    if (isBuyerMaker) {
+    // If bid is passive, sell is a market order (aggressive ask)
+    if (isPassiveBid) {
       this.activeCandle.aggressiveAsk += tradeQty;
       this.activeCandle.priceLevels[precisionTrimmedPrice].volSumAsk += tradeQty;
     } else {
-      // Else, sell is a limit order, buyer is a market order (high bid), buyer is aggressive bid
+      // If bid is not passive, buy is a market order (aggressive bid)
       this.activeCandle.aggressiveBid += tradeQty;
       this.activeCandle.priceLevels[precisionTrimmedPrice].volSumBid += tradeQty;
     }

@@ -56,6 +56,48 @@ export class BinanceService {
     await this.databaseService.pruneOldData();
   }
 
+  @Cron(CronExpression.EVERY_MINUTE)
+  async processMinuteCandleClose() {
+    if (!this.didFinishConnectingWS) {
+      return;
+    }
+
+    const closed1mCandles: { [symbol: string]: IFootPrintClosedCandle } = {};
+    const triggeredIntervalsPerSymbol: { [symbol: string]: INTERVALS[] } = {};
+
+    // Process 1m candles and determine triggered intervals
+    for (const symbol in this.aggregators) {
+      const aggr = this.getOrderFlowAggregator(symbol, this.BASE_INTERVAL);
+      const closed1mCandle = aggr.processCandleClosed();
+
+      if (closed1mCandle) {
+        this.candleQueue.enqueCandle(closed1mCandle);
+        closed1mCandles[symbol] = closed1mCandle;
+
+        const nextOpenTimeMS = 1 + closed1mCandle.closeTimeMs;
+        const nextOpenTime = new Date(nextOpenTimeMS);
+        triggeredIntervalsPerSymbol[symbol] = findAllEffectedHTFIntervalsOnCandleClose(nextOpenTime, this.HTF_INTERVALS);
+      }
+    }
+
+    // Persist 1m candles
+    await this.candleQueue.persistCandlesToStorage({ clearQueue: true });
+
+    // Process HTF candles
+    for (const interval of this.HTF_INTERVALS) {
+      for (const symbol in closed1mCandles) {
+        if (triggeredIntervalsPerSymbol[symbol].includes(interval)) {
+          const closed1mCandle = closed1mCandles[symbol];
+          const htfCandle = await this.buildHTFCandle(symbol, interval, closed1mCandle.openTimeMs, closed1mCandle.closeTimeMs);
+          if (htfCandle) {
+            this.candleQueue.enqueCandle(htfCandle);
+          }
+        }
+      }
+      await this.candleQueue.persistCandlesToStorage({ clearQueue: true });
+    }
+  }
+
   private async subscribeToWS(): Promise<void> {
     const exchangeInfo = await this.binanceRest.getExchangeInfo();
     const symbols = this.selectedSymbols.length > 0 ? this.selectedSymbols : exchangeInfo.symbols.map(({ symbol }) => symbol);
@@ -104,48 +146,6 @@ export class BinanceService {
     }
 
     return this.aggregators[symbol];
-  }
-
-  @Cron(CronExpression.EVERY_MINUTE)
-  async processMinuteCandleClose() {
-    if (!this.didFinishConnectingWS) {
-      return;
-    }
-
-    const closed1mCandles: { [symbol: string]: IFootPrintClosedCandle } = {};
-    const triggeredIntervalsPerSymbol: { [symbol: string]: INTERVALS[] } = {};
-
-    // Process 1m candles and determine triggered intervals
-    for (const symbol in this.aggregators) {
-      const aggr = this.getOrderFlowAggregator(symbol, this.BASE_INTERVAL);
-      const closed1mCandle = aggr.processCandleClosed();
-
-      if (closed1mCandle) {
-        this.candleQueue.enqueCandle(closed1mCandle);
-        closed1mCandles[symbol] = closed1mCandle;
-
-        const nextOpenTimeMS = 1 + closed1mCandle.closeTimeMs;
-        const nextOpenTime = new Date(nextOpenTimeMS);
-        triggeredIntervalsPerSymbol[symbol] = findAllEffectedHTFIntervalsOnCandleClose(nextOpenTime, this.HTF_INTERVALS);
-      }
-    }
-
-    // Persist 1m candles
-    await this.candleQueue.persistCandlesToStorage({ clearQueue: true });
-
-    // Process HTF candles
-    for (const interval of this.HTF_INTERVALS) {
-      for (const symbol in closed1mCandles) {
-        if (triggeredIntervalsPerSymbol[symbol].includes(interval)) {
-          const closed1mCandle = closed1mCandles[symbol];
-          const htfCandle = await this.buildHTFCandle(symbol, interval, closed1mCandle.openTimeMs, closed1mCandle.closeTimeMs);
-          if (htfCandle) {
-            this.candleQueue.enqueCandle(htfCandle);
-          }
-        }
-      }
-      await this.candleQueue.persistCandlesToStorage({ clearQueue: true });
-    }
   }
 
   async buildHTFCandle(symbol: string, targetInterval: INTERVALS, openTimeMs: number, closeTimeMs: number): Promise<IFootPrintClosedCandle | null> {

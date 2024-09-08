@@ -1,121 +1,169 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { v4 } from 'uuid';
+import { RestClientV5 } from 'bybit-api';
 import { DatabaseService } from '@database/database.service';
-import { BybitWebSocketService } from 'apps/bybit/src/BybitWebsocketService';
-import { TradeData } from 'apps/bybit/src/websocket.responses';
-import { IFootPrintCandle } from '@orderflow/dto/orderflow.dto';
-import { createFormattedDate, getStartOfMinute } from '@orderflow/utils/date';
+import { BybitWebSocketService } from './BybitWebsocketService';
+import { IFootPrintClosedCandle } from '@orderflow/dto/orderflow.dto';
+import { CandleQueue } from '@orderflow/utils/candleQueue';
+import { OrderFlowAggregator } from '@orderflow/utils/orderFlowAggregator';
+import { INTERVALS, KlineIntervalMs } from '@shared/utils/intervals';
+import { aggregationIntervalMap } from '@orderflow/constants/aggregation';
+import { findAllEffectedHTFIntervalsOnCandleClose } from '@orderflow/utils/candleBuildHelper';
+import { mergeFootPrintCandles } from '@orderflow/utils/orderFlowUtil';
+import { Exchange } from '@shared/constants/exchange';
+import { TradeData } from './websocket.responses';
 
 @Injectable()
 export class ByBitService {
-  private logger: Logger;
-  private activeCandles: IFootPrintCandle[] = [];
-  private closedCandles: IFootPrintCandle[] = [];
+  private logger: Logger = new Logger(ByBitService.name);
+  private selectedSymbols: string[] = process.env.SYMBOLS?.split(',') ?? [];
+  private readonly BASE_INTERVAL = INTERVALS.ONE_MINUTE;
+  private readonly HTF_INTERVALS = [
+    INTERVALS.FIVE_MINUTES,
+    INTERVALS.FIFTEEN_MINUTES,
+    INTERVALS.THIRTY_MINUTES,
+    INTERVALS.ONE_HOUR,
+    INTERVALS.TWO_HOURS,
+    INTERVALS.FOUR_HOURS,
+    INTERVALS.EIGHT_HOURS,
+    INTERVALS.TWELVE_HOURS,
+    INTERVALS.ONE_DAY,
+    INTERVALS.ONE_WEEK,
+    INTERVALS.ONE_MONTH
+  ];
+
+  private didFinishConnectingWS: boolean = false;
+
+  private bybitRest = new RestClientV5();
+
+  private aggregators: { [symbol: string]: OrderFlowAggregator } = {};
+  private candleQueue: CandleQueue;
+
   constructor(private readonly databaseService: DatabaseService, private readonly bybitWsService: BybitWebSocketService) {
     this.logger = new Logger(ByBitService.name);
   }
 
   async onModuleInit() {
-    const topics: string[] = ['publicTrade.BTCUSDT'];
-    this.bybitWsService.subscribeToTopics(topics, 'linear');
-    this.logger.log('subscribing to WS');
+    this.logger.log(`Starting Bybit Orderflow service for Live candle building from raw trades`);
+    await this.subscribeToWS();
+  }
 
-    this.createNewCandle();
+  @Cron(CronExpression.EVERY_HOUR)
+  async handlePrune() {
+    await this.databaseService.pruneOldData();
+  }
+
+  @Cron(CronExpression.EVERY_MINUTE)
+  async processMinuteCandleClose() {
+    if (!this.didFinishConnectingWS) {
+      return;
+    }
+
+    const closed1mCandles: { [symbol: string]: IFootPrintClosedCandle } = {};
+    const triggeredIntervalsPerSymbol: { [symbol: string]: INTERVALS[] } = {};
+
+    // Process 1m candles and determine triggered intervals
+    for (const symbol in this.aggregators) {
+      const aggr = this.getOrderFlowAggregator(symbol, this.BASE_INTERVAL);
+      const closed1mCandle = aggr.processCandleClosed();
+
+      if (closed1mCandle) {
+        this.candleQueue.enqueCandle(closed1mCandle);
+        closed1mCandles[symbol] = closed1mCandle;
+
+        const nextOpenTimeMS = 1 + closed1mCandle.closeTimeMs;
+        const nextOpenTime = new Date(nextOpenTimeMS);
+        triggeredIntervalsPerSymbol[symbol] = findAllEffectedHTFIntervalsOnCandleClose(nextOpenTime, this.HTF_INTERVALS);
+      }
+    }
+
+    // Persist 1m candles
+    await this.candleQueue.persistCandlesToStorage({ clearQueue: true });
+
+    // Process HTF candles
+    for (const interval of this.HTF_INTERVALS) {
+      for (const symbol in closed1mCandles) {
+        if (triggeredIntervalsPerSymbol[symbol].includes(interval)) {
+          const closed1mCandle = closed1mCandles[symbol];
+          const htfCandle = await this.buildHTFCandle(symbol, interval, closed1mCandle.openTimeMs, closed1mCandle.closeTimeMs);
+          if (htfCandle) {
+            this.candleQueue.enqueCandle(htfCandle);
+          }
+        }
+      }
+      await this.candleQueue.persistCandlesToStorage({ clearQueue: true });
+    }
+  }
+
+  private async subscribeToWS(): Promise<void> {
+    const instrumentInfo = await this.bybitRest.getInstrumentsInfo({ category: 'linear' });
+    const symbols =
+      this.selectedSymbols.length > 0
+        ? this.selectedSymbols
+        : instrumentInfo.result.list.filter((item) => item.contractType === 'LinearPerpetual').map(({ symbol }) => symbol);
+    const topics: string[] = symbols.map((symbol: string) => `publicTrade.${symbol}`);
+
+    this.bybitWsService.initWebSocket(instrumentInfo);
+
+    await this.bybitWsService.subscribeToTopics(topics, 'linear');
+
+    this.bybitWsService.connected.subscribe(() => {
+      this.logger.log(`All WS connections are now open`);
+      this.didFinishConnectingWS = true;
+    });
 
     this.bybitWsService.tradeUpdates.subscribe((trades: TradeData[]) => {
       for (let i = 0; i < trades.length; i++) {
-        this.updateLastCandle(trades[i].S, trades[i].v, trades[i].p, trades[i].L);
+        const isPassiveBid: boolean = trades[i].S === 'Sell'; // The aggressive side is selling
+        this.processNewTrades(trades[i].s, isPassiveBid, trades[i].v, trades[i].p);
       }
     });
   }
 
-  @Cron(CronExpression.EVERY_MINUTE)
-  async processCandles() {
-    this.closeLastCandle();
-    this.createNewCandle();
-    await this.persistCandlesToStorage();
-  }
-
-  get lastCandle(): IFootPrintCandle {
-    return this.activeCandles[this.activeCandles.length - 1];
-  }
-
-  private updateLastCandle(side: string, positionSize: string, price: string, direction: string) {
-    if (!this.lastCandle) return;
-
-    const lastCandle = this.lastCandle;
-
-    const volume = parseFloat(positionSize);
-
-    // Update volume
-    lastCandle.volume += volume;
-
-    // Determine which side (bid/ask) and delta direction based on the side
-    const targetSide = side === 'Buy' ? 'bid' : 'ask';
-    const deltaChange = side === 'Buy' ? volume : -volume;
-
-    // Update delta
-    lastCandle.volumeDelta += deltaChange;
-
-    // Update or initialize the bid/ask price volume
-    lastCandle[targetSide][price] = (lastCandle[targetSide][price] || 0) + volume;
-
-    // Update aggressiveBid and aggressiveAsk based on tick direction
-    if (targetSide === 'bid' && direction === 'PlusTick') {
-      lastCandle.aggressiveBid = (lastCandle.aggressiveBid || 0) + volume;
-    } else if (targetSide === 'ask' && direction !== 'PlusTick') {
-      // Assuming any non PlusTick is a MinusTick
-      lastCandle.aggressiveAsk = (lastCandle.aggressiveAsk || 0) + volume;
-    }
-
-    // Update high and low
-    lastCandle.high = lastCandle.high ? Math.max(lastCandle.high, Number(price)) : Number(price);
-    lastCandle.low = lastCandle.low ? Math.min(lastCandle.low, Number(price)) : Number(price);
-  }
-
-  private createNewCandle() {
-    const now = getStartOfMinute();
-    const formattedDate = createFormattedDate(now);
-
-    this.logger.log(`Creating new candle at ${formattedDate}.`);
-
-    this.activeCandles.push({
-      id: v4(),
-      timestamp: now.toISOString(),
-      symbol: 'BTCUSDT',
-      exchange: 'bybit',
-      interval: '1m',
-      aggressiveBid: 0,
-      aggressiveAsk: 0,
-      volumeDelta: 0,
-      volume: 0,
-      high: null,
-      low: null,
-      bid: {},
-      ask: {}
-    } as IFootPrintCandle);
-  }
-
-  private closeLastCandle() {
-    if (this.activeCandles.length > 0) {
-      this.logger.log('closing candle');
-      const candleToClose = this.activeCandles.pop();
-      this.closedCandles.push(candleToClose);
-    }
-  }
-
-  private async persistCandlesToStorage() {
-    const successfulIds: string[] = [];
-
-    for (let i = 0; i < this.closedCandles.length; i++) {
-      this.logger.log('Saving Candle', this.closedCandles[i].id, this.closedCandles[i].timestamp);
-      const isSaved = await this.databaseService.saveFootPrintCandle(this.closedCandles[i]);
-      if (isSaved) {
-        successfulIds.push(this.closedCandles[i].id);
+  private getOrderFlowAggregator(symbol: string, interval: string): OrderFlowAggregator {
+    if (!this.aggregators[symbol]) {
+      const intervalSizeMs: number = KlineIntervalMs[interval];
+      if (!intervalSizeMs) {
+        throw new Error(`Unknown ms per interval "${interval}"`);
       }
+
+      this.aggregators[symbol] = new OrderFlowAggregator('bybit', symbol, interval, intervalSizeMs, {});
     }
 
-    this.closedCandles = this.closedCandles.filter((candle) => !successfulIds.includes(candle.id));
+    return this.aggregators[symbol];
+  }
+
+  async buildHTFCandle(symbol: string, targetInterval: INTERVALS, openTimeMs: number, closeTimeMs: number): Promise<IFootPrintClosedCandle | null> {
+    const { baseInterval, count } = aggregationIntervalMap[targetInterval];
+
+    this.logger.log(`Building a new HTF candle for ${symbol} ${targetInterval}. Will attempt to find and use ${count} ${baseInterval} candles`);
+
+    const baseIntervalMs = KlineIntervalMs[baseInterval];
+    const aggregationStart = closeTimeMs - baseIntervalMs * count;
+    const aggregationEnd = closeTimeMs;
+
+    const candles = await this.databaseService.getCandles(Exchange.BYBIT, symbol, baseInterval, aggregationStart, aggregationEnd);
+
+    if (candles?.length === count) {
+      const aggregatedCandle = mergeFootPrintCandles(candles, targetInterval);
+      if (aggregatedCandle) {
+        return aggregatedCandle;
+      }
+    } else {
+      this.logger.warn(
+        `Target candle count ${count} was not met to create a new candle for ${symbol}, ${targetInterval}. Candle closed at ${new Date(closeTimeMs)}`
+      );
+    }
+
+    return null;
+  }
+
+  private processNewTrades(symbol: string, isPassiveBid: boolean, positionSize: string, price: number) {
+    if (!this.didFinishConnectingWS) {
+      return;
+    }
+
+    const aggr = this.getOrderFlowAggregator(symbol, this.BASE_INTERVAL);
+    aggr.processNewTrades(isPassiveBid, Number(positionSize), price);
   }
 }

@@ -1,44 +1,56 @@
 import { Injectable } from '@nestjs/common';
 import { Observable, Subject } from 'rxjs';
 import { TradeData, TradeResponse } from './websocket.responses';
-import { CategoryV5, WebsocketClient } from 'bybit-api';
+import { APIResponseV3WithTime, CategoryV5, InstrumentInfoResponseV5, WebsocketClient } from 'bybit-api';
+import { getRoundedAssetPrice } from '@shared/utils/bybit';
 
 @Injectable()
 export class BybitWebSocketService {
   private ws: WebsocketClient;
   private tradeUpdates$: Subject<TradeData[]> = new Subject();
-  private reconnect$: Subject<string> = new Subject();
-  private connected$: Subject<string> = new Subject();
+  private reconnect$: Subject<boolean> = new Subject();
+  private connected$: Subject<boolean> = new Subject();
 
-  constructor() {
-    this.initWebSocket();
+  get reconnected(): Observable<boolean> {
+    return this.reconnect$.asObservable();
+  }
+
+  get connected(): Observable<boolean> {
+    return this.connected$.asObservable();
   }
 
   get tradeUpdates(): Observable<TradeData[]> {
     return this.tradeUpdates$.asObservable();
   }
 
-  private initWebSocket(): void {
+  initWebSocket(instrumentInfo: APIResponseV3WithTime<InstrumentInfoResponseV5<'linear'>>): void {
     this.ws = new WebsocketClient({ market: 'v5' });
 
     this.ws.on('update', (response: TradeResponse) => {
       if (response.topic.startsWith('publicTrade')) {
-        this.tradeUpdates$.next(response.data as TradeData[]);
+        const tradeUpdates = response.data.map((data) => {
+          const roundedPrice = getRoundedAssetPrice(data.s, Number(data.p), instrumentInfo);
+
+          return {
+            ...data,
+            p: roundedPrice
+          };
+        });
+        this.tradeUpdates$.next(tradeUpdates as TradeData[]);
       }
     });
 
-    this.ws.on('open', (event) => {
-      console.log('connection opened:', event.wsKey, event.ws.target.url);
-      this.connected$.next(event.wsKey);
+    this.ws.on('open', () => {
+      console.log('connection opened');
+      this.connected$.next(true);
     });
 
-    this.ws.on('reconnect', (data) => {
-      console.log('ws automatically reconnecting.... ', data?.wsKey);
+    this.ws.on('reconnect', () => {
+      console.log('ws automatically reconnecting.... ');
     });
 
-    this.ws.on('reconnected', (data) => {
-      console.log('ws has reconnected ', data?.wsKey);
-      this.reconnect$.next(data.wsKey);
+    this.ws.on('reconnected', () => {
+      this.reconnect$.next(true);
     });
 
     this.ws.on('error', (data) => {
@@ -46,7 +58,7 @@ export class BybitWebSocketService {
     });
   }
 
-  public subscribeToTopics(topics: string[], category: string): void {
-    this.ws.subscribeV5(topics, category as CategoryV5);
+  public async subscribeToTopics(topics: string[], category: string): Promise<void> {
+    await this.ws.subscribeV5(topics, category as CategoryV5);
   }
 }

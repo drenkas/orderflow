@@ -10,7 +10,7 @@ export interface TradeData {
   s: string; // symbol
   S: string; // side (Buy/Sell)
   v: string; // volume
-  p: string; // price
+  p: number; // price
   L: string; // tick direction
   i: string; // trade id
   BT: boolean; // breakout trade
