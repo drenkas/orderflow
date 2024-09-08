@@ -22,6 +22,7 @@
     "@nestjs/platform-express": "^10.0.0",
     "@nestjs/schedule": "^3.0.2",
     "@nestjs/typeorm": "^10.0.0",
+    "bybit": "^1.0.5",
     "bybit-api": "^3.7.1",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.0",
