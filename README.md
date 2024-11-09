@@ -1,6 +1,6 @@
 # Orderflow
 
-Real-time 24/7 aggregate live trades to build footprint candles. Supports Binance and Bybit (crypto).
+Real-time services to deploy in a docker container to aggregate live trades and build footprint candles. Supports Binance and Bybit (crypto).
 
 Services:
 
