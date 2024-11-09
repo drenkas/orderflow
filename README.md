@@ -1,14 +1,14 @@
 # Orderflow
 
-This project offers a solution for aggregating live trades and building footprint candles for Binance and Bybit.
+Real-time 24/7 aggregate live trades to build footprint candles. Supports Binance and Bybit (crypto).
 
-Three services:
+Services:
 
-1. Real-time trade data aggregated into footprint candles for Binance.
-2. Real-time trade data aggregated into footprint candles for Bybit.
-3. Backfilling (historical) footprint candle generation for Binance.
+1. Binance Live.
+2. Bybit Live.
+3. Binance Backfiller.
 
-## Installation
+## Get Started
 
 1. Clone the repository:
    ```
@@ -16,27 +16,23 @@ Three services:
    cd orderflow
    ```
 
-2. Install dependencies:
-   ```
-   yarn install
-   ```
-
-3. Set up a PostgreSQL TimescaleDB instance (Required):
+2. Set up a PostgreSQL TimescaleDB instance (Required):
    ```
    docker run -d --name timescaledb -p 5433:5432 -e POSTGRES_PASSWORD=password timescale/timescaledb-ha:pg14-latest
    ```
 
-4. Configure environment variables:
+3. Configure environment variables:
    - `DB_URL`
    - `SYMBOLS` (CSV. Defaults to all exchange symbols)
   
-5. Build and Run the services:
+4. Build and Run the services:
    ```
-   docker-compose build binance
-   docker-compose build bybit
-   docker-compose up -d binance
-   docker-compose up -d bybit
+   docker-compose up --build -d binance
    ```
+   ```
+   docker-compose up --build -d bybit
+   ```
+   
 
 ## Binance Backfill
 
