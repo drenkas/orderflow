@@ -23,6 +23,7 @@
     "@nestjs/schedule": "^3.0.2",
     "@nestjs/typeorm": "^10.0.0",
     "binance": "^2.13.2",
+    "bybit-api": "^3.10.15",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.0",
     "pg": "^8.11.2",

@@ -27,11 +27,7 @@ The system processes live trade data in real-time, aggregating it into 1-minute 
    ```
 
 4. Configure environment variables:
-   - `DB_HOST`
-   - `DB_PORT`
-   - `DB_USERNAME`
-   - `DB_PASSWORD`
-   - `DB_NAME`
+   - `DB_URL`
    - `SYMBOLS` (CSV. Defaults to all exchange symbols)
 
 ## Usage

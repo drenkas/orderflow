@@ -22,14 +22,15 @@
     "@nestjs/platform-express": "^10.0.0",
     "@nestjs/schedule": "^3.0.2",
     "@nestjs/typeorm": "^10.0.0",
-    "bybit": "^1.0.5",
-    "bybit-api": "^3.7.1",
+    "binance": "^2.13.2",
+    "bybit-api": "^3.10.15",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.0",
     "pg": "^8.11.2",
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.8.1",
-    "typeorm": "^0.3.17"
+    "typeorm": "^0.3.17",
+    "uuid": "^10.0.0"
   },
   "devDependencies": {
     "@nestjs/cli": "^10.0.0",

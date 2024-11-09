@@ -6,11 +6,7 @@ services:
       context: .
       dockerfile: ./apps/binance/Dockerfile
     environment:
-      - DB_HOST=host.docker.internal
-      - DB_PORT=5433
-      - DB_USERNAME=postgres
-      - DB_PASSWORD=password
-      - DB_NAME=postgres
+      - DB_URL=postgresql://postgres:password@host.docker.internal:5433/postgres
       - SYMBOLS=${SYMBOLS}
     extra_hosts:
       - 'host.docker.internal:host-gateway'
@@ -23,11 +19,7 @@ services:
       context: .
       dockerfile: ./apps/bybit/Dockerfile
     environment:
-      - DB_HOST=host.docker.internal
-      - DB_PORT=5433
-      - DB_USERNAME=postgres
-      - DB_PASSWORD=password
-      - DB_NAME=postgres
+      - DB_URL=postgresql://postgres:password@host.docker.internal:5433/postgres
       - SYMBOLS=${SYMBOLS}
     extra_hosts:
       - 'host.docker.internal:host-gateway'
