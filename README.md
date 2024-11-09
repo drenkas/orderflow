@@ -13,7 +13,6 @@ Services:
 1. Clone the repository:
    ```
    git clone git@github.com:focus1691/orderflow.git
-   cd orderflow
    ```
 
 2. Set up a PostgreSQL TimescaleDB instance (Required):
