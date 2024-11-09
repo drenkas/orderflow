@@ -39,9 +39,9 @@ Services:
 For historical data processing:
 
 1. Set the following environment variables:
-   - `SYMBOLS`: Specify the trading pair(s) for which you want to process historical data (comma-separated if multiple)
-   - `BACKFILL_START_AT`: Start timestamp for backfill data processing
-   - `BACKFILL_END_AT`: End timestamp for backfill data processing
+   - `SYMBOLS`: Trading pair(s) to backfill for. Comma-separated values.
+   - `BACKFILL_START_AT`: Start timestamp (ms)
+   - `BACKFILL_END_AT`: End timestamp (ms)
 
 2. Run the Binance Backfill service:
    ```
