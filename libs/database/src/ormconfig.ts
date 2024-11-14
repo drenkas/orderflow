@@ -7,7 +7,7 @@ export const DatabaseConfiguration: DataSourceOptions = {
   type: 'postgres',
   url: process.env.DB_URL,
   entities: [FootPrintCandle],
-  synchronize: false
+  synchronize: true
 };
 
 export const AppDataSource = new DataSource(DatabaseConfiguration);
