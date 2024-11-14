@@ -40,7 +40,7 @@ export class ByBitService {
   private candleQueue: CandleQueue;
 
   constructor(private readonly databaseService: DatabaseService, private readonly bybitWsService: BybitWebSocketService) {
-    this.logger = new Logger(ByBitService.name);
+    this.candleQueue = new CandleQueue(this.databaseService);
   }
 
   async onModuleInit() {
@@ -107,10 +107,7 @@ export class ByBitService {
 
     await this.bybitWsService.subscribeToTopics(topics, 'linear');
 
-    this.bybitWsService.connected.subscribe(() => {
-      this.logger.log(`All WS connections are now open`);
-      this.didFinishConnectingWS = true;
-    });
+    this.didFinishConnectingWS = true;
 
     this.bybitWsService.tradeUpdates.subscribe((trades: TradeData[]) => {
       for (let i = 0; i < trades.length; i++) {
