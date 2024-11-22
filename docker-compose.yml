@@ -6,7 +6,7 @@ services:
       context: .
       dockerfile: ./apps/binance/Dockerfile
     environment:
-      - DB_URL=postgresql://postgres:password@host.docker.internal:5433/postgres
+      - DB_URL=${DB_URL}
       - SYMBOLS=${SYMBOLS}
     extra_hosts:
       - 'host.docker.internal:host-gateway'
@@ -19,7 +19,7 @@ services:
       context: .
       dockerfile: ./apps/bybit/Dockerfile
     environment:
-      - DB_URL=postgresql://postgres:password@host.docker.internal:5433/postgres
+      - DB_URL=${DB_URL}
       - SYMBOLS=${SYMBOLS}
     extra_hosts:
       - 'host.docker.internal:host-gateway'
