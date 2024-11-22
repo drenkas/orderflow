@@ -48,7 +48,7 @@ export class BinanceService {
     private readonly binanceWsService: BinanceWebSocketService,
     private readonly rabbitmqService: RabbitMQService
   ) {
-    this.candleQueue = new CandleQueue(this.databaseService);
+    this.candleQueue = new CandleQueue(Exchange.BINANCE, this.databaseService, this.rabbitmqService);
   }
 
   async onModuleInit() {

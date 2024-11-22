@@ -10,7 +10,7 @@ export class RabbitMQService implements OnModuleInit, OnModuleDestroy {
 
   private readonly USE_RABBITMQ = process.env.USE_RABBITMQ === 'true';
   private readonly RABBITMQ_URL = process.env.RABBITMQ_URL || null;
-  private readonly EXCHANGE = 'default_exchange';
+  private readonly EXCHANGE = process.env.RABBITMQ_EXCHANGE || 'default_exchange';
 
   async onModuleInit() {
     await this.connect();

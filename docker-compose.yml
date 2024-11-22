@@ -8,6 +8,9 @@ services:
     environment:
       - DB_URL=${DB_URL}
       - SYMBOLS=${SYMBOLS}
+      - USE_RABBITMQ=${USE_RABBITMQ}
+      - RABBITMQ_URL=${RABBITMQ_URL}
+      - RABBITMQ_EXCHANGE=${RABBITMQ_EXCHANGE}
     extra_hosts:
       - 'host.docker.internal:host-gateway'
     entrypoint: ['node', 'dist/main.js']
@@ -21,6 +24,9 @@ services:
     environment:
       - DB_URL=${DB_URL}
       - SYMBOLS=${SYMBOLS}
+      - USE_RABBITMQ=${USE_RABBITMQ}
+      - RABBITMQ_URL=${RABBITMQ_URL}
+      - RABBITMQ_EXCHANGE=${RABBITMQ_EXCHANGE}
     extra_hosts:
       - 'host.docker.internal:host-gateway'
     entrypoint: ['node', 'dist/main.js']

@@ -45,7 +45,7 @@ export class ByBitService {
     private readonly bybitWsService: BybitWebSocketService,
     private readonly rabbitmqService: RabbitMQService
   ) {
-    this.candleQueue = new CandleQueue(this.databaseService);
+    this.candleQueue = new CandleQueue(Exchange.BYBIT, this.databaseService, this.rabbitmqService);
   }
 
   async onModuleInit() {

@@ -1,16 +1,20 @@
-import { DatabaseService } from '@database/database.service';
+import { DatabaseService } from '@database';
+import { RabbitMQService } from '@rabbitmq';
 import { IFootPrintClosedCandle } from '@orderflow/dto/orderflow.dto';
+import { Exchange } from '@shared/constants/exchange';
 
 export class CandleQueue {
-  /** Queue of candles that may not yet have reached the DB yet (closed candles) */
+  private exchange: Exchange;
+
   private queue: IFootPrintClosedCandle[] = [];
 
   private databaseService: DatabaseService;
+  private rabbitmqService: RabbitMQService;
 
-  private isProcessingJob: boolean = false;
-
-  constructor(databaseService: DatabaseService) {
+  constructor(exchange: Exchange, databaseService: DatabaseService, rabbitmqService: RabbitMQService) {
+    this.exchange = exchange;
     this.databaseService = databaseService;
+    this.rabbitmqService = rabbitmqService;
   }
 
   /** Get only candles that haven't been saved to DB yet */
@@ -50,9 +54,14 @@ export class CandleQueue {
     );
 
     const savedUUIDs = await this.databaseService.batchSaveFootPrintCandles([...queuedCandles]);
+    const savedCandles = this.queue.filter((candle) => candle.uuid && savedUUIDs.includes(candle.uuid));
 
-    // Filter out successfully saved candles
     this.markSavedCandles(savedUUIDs);
+
+    if (savedCandles.length > 0) {
+      const topics = Array.from(new Set(savedCandles.map((candle) => `${this.exchange}.${candle.symbol}.${candle.interval}.${candle.openTimeMs}`)));
+      await this.rabbitmqService.publish('footprint_candles.closed', topics);
+    }
 
     if (clearQueue) {
       this.clearQueue();
