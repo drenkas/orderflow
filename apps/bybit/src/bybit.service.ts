@@ -1,7 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { RestClientV5 } from 'bybit-api';
-import { DatabaseService } from '@database/database.service';
+import { DatabaseService } from '@database';
+import { RabbitMQService } from '@rabbitmq';
 import { BybitWebSocketService } from './BybitWebsocketService';
 import { IFootPrintClosedCandle } from '@orderflow/dto/orderflow.dto';
 import { CandleQueue } from '@orderflow/utils/candleQueue';
@@ -39,7 +40,11 @@ export class ByBitService {
   private aggregators: { [symbol: string]: OrderFlowAggregator } = {};
   private candleQueue: CandleQueue;
 
-  constructor(private readonly databaseService: DatabaseService, private readonly bybitWsService: BybitWebSocketService) {
+  constructor(
+    private readonly databaseService: DatabaseService,
+    private readonly bybitWsService: BybitWebSocketService,
+    private readonly rabbitmqService: RabbitMQService
+  ) {
     this.candleQueue = new CandleQueue(this.databaseService);
   }
 
