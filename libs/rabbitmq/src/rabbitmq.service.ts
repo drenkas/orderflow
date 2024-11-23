@@ -48,30 +48,30 @@ export class RabbitMQService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  async publish(routingKey: string, message: object) {
+  async publish(exchangeName: string, message: object) {
     try {
       const messageBuffer = Buffer.from(JSON.stringify(message));
-      this.channel.publish(this.EXCHANGE, routingKey, messageBuffer);
-      this.logger.log(`Message published to routingKey ${routingKey}:`, message);
+      this.channel.publish(this.EXCHANGE, exchangeName, messageBuffer);
+      this.logger.log(`Message published to exchange ${exchangeName}:`, message);
     } catch (error) {
       this.logger.error('Failed to publish message:', error);
     }
   }
 
-  async subscribe(queue: string, routingKey: string, onMessage: (msg: any) => void) {
+  async subscribe(queue: string, exchangeName: string, onMessage: (msg: any) => void) {
     try {
       await this.channel.assertQueue(queue, { durable: true });
-      await this.channel.bindQueue(queue, this.EXCHANGE, routingKey);
+      await this.channel.bindQueue(queue, this.EXCHANGE, exchangeName);
 
       this.channel.consume(queue, (msg) => {
         if (msg) {
           const content = JSON.parse(msg.content.toString());
-          this.logger.log(`Message received from routingKey ${routingKey}:`, content);
+          this.logger.log(`Message received from exchange ${exchangeName}:`, content);
           onMessage(content);
           this.channel.ack(msg);
         }
       });
-      this.logger.log(`Subscribed to queue ${queue} with routingKey ${routingKey}`);
+      this.logger.log(`Subscribed to queue ${queue} from exchange ${exchangeName}`);
     } catch (error) {
       this.logger.error('Failed to subscribe to queue:', error);
     }
