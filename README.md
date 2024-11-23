@@ -35,7 +35,7 @@ An Orderflow trade aggregator to deploy in the cloud that builds Footprint Candl
    yarn bybit:docker
    ```
    ```
-   yarn bybit:okx
+   yarn okx:docker
    ```
 
 ## Binance Backfill
