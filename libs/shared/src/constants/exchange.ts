@@ -3,7 +3,8 @@ export const CACHE_LIMIT = 600;
 export enum Exchange {
   BINANCE = 'binance',
   BITMEX = 'bitmex',
-  BYBIT = 'bybit'
+  BYBIT = 'bybit',
+  OKX = 'okx'
 }
 
 export enum EXCHANGE_DATA_TYPES {
