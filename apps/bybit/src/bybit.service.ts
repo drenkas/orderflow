@@ -49,7 +49,7 @@ export class ByBitService {
   }
 
   async onModuleInit() {
-    this.logger.log(`Starting Bybit Orderflow service for Live candle building from raw trades`);
+    this.logger.log(`Starting Bybit Orderflow service for Live candle building`);
     await this.subscribeToWS();
   }
 

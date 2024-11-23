@@ -52,7 +52,7 @@ export class BinanceService {
   }
 
   async onModuleInit() {
-    this.logger.log(`Starting Binance Orderflow service for Live candle building from raw trades`);
+    this.logger.log(`Starting Binance Orderflow service for Live candle building`);
     await this.subscribeToWS();
   }
 
