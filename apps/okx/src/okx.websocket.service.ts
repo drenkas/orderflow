@@ -1,13 +1,22 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable @typescript-eslint/no-empty-function */
 import { Injectable } from '@nestjs/common';
 import { Observable, Subject } from 'rxjs';
-import { TradeData, TradeResponse } from './websocket.responses';
-import { APIResponseV3WithTime, CategoryV5, InstrumentInfoResponseV5, WebsocketClient } from 'bybit-api';
-import { getRoundedAssetPrice } from '@shared/utils/bybit';
+import { DefaultLogger, Instrument, Trade, WebsocketClient, WsChannelSubUnSubRequestArg, WsDataEvent } from 'okx-api';
+import { getRoundedAssetPrice } from '@shared/utils/okx';
+
+const logger = {
+  ...DefaultLogger,
+  silly: (..._params) => {},
+  debug: (..._params) => {},
+  notice: (..._params) => {},
+  info: (..._params) => {}
+};
 
 @Injectable()
 export class OkxWebSocketService {
   private ws: WebsocketClient;
-  private tradeUpdates$: Subject<TradeData[]> = new Subject();
+  private tradeUpdates$: Subject<Trade[]> = new Subject();
   private reconnect$: Subject<boolean> = new Subject();
   private connected$: Subject<boolean> = new Subject();
 
@@ -19,24 +28,23 @@ export class OkxWebSocketService {
     return this.connected$.asObservable();
   }
 
-  get tradeUpdates(): Observable<TradeData[]> {
+  get tradeUpdates(): Observable<Trade[]> {
     return this.tradeUpdates$.asObservable();
   }
 
-  initWebSocket(instrumentInfo: APIResponseV3WithTime<InstrumentInfoResponseV5<'linear'>>): void {
-    this.ws = new WebsocketClient({ market: 'v5' });
+  initWebSocket(instrumentInfo: Instrument[]): void {
+    this.ws = new WebsocketClient({ pongTimeout: 1000 * 30 }, logger);
 
-    this.ws.on('update', (response: TradeResponse) => {
-      if (response.topic.startsWith('publicTrade')) {
-        const tradeUpdates = response.data.map((data) => {
-          const roundedPrice = getRoundedAssetPrice(data.s, Number(data.p), instrumentInfo);
-
+    this.ws.on('update', (message: WsDataEvent<Trade[]>) => {
+      if (message.arg.channel === 'trades') {
+        const tradeUpdates = message.data.map((data) => {
+          const roundedPrice = getRoundedAssetPrice(data.instId, Number(data.px), instrumentInfo);
           return {
             ...data,
             p: roundedPrice
           };
         });
-        this.tradeUpdates$.next(tradeUpdates as TradeData[]);
+        this.tradeUpdates$.next(tradeUpdates as Trade[]);
       }
     });
 
@@ -58,7 +66,13 @@ export class OkxWebSocketService {
     });
   }
 
-  public async subscribeToTopics(topics: string[], category: string): Promise<void> {
-    await this.ws.subscribeV5(topics, category as CategoryV5);
+  public async subscribeToTopics(symbols: string[], category: string): Promise<void> {
+    const wsTopics: WsChannelSubUnSubRequestArg[] = symbols.map((symbol) => {
+      return {
+        channel: 'trades',
+        instId: symbol
+      };
+    });
+    await this.ws.subscribe(wsTopics);
   }
 }

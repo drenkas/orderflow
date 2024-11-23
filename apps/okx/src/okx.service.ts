@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { RestClientV5 } from 'okx-api';
+import { Instrument, RestClient, Trade } from 'okx-api';
 import { DatabaseService } from '@database';
 import { RabbitMQService } from '@rabbitmq';
 import { OkxWebSocketService } from './okx.websocket.service';
@@ -12,7 +12,7 @@ import { aggregationIntervalMap } from '@orderflow/constants/aggregation';
 import { findAllEffectedHTFIntervalsOnCandleClose } from '@orderflow/utils/candleBuildHelper';
 import { mergeFootPrintCandles } from '@orderflow/utils/orderFlowUtil';
 import { Exchange } from '@shared/constants/exchange';
-import { TradeData } from './websocket.responses';
+import { normaliseSymbolName } from '@shared/utils/okx';
 
 @Injectable()
 export class OkxService {
@@ -35,7 +35,7 @@ export class OkxService {
 
   private didFinishConnectingWS: boolean = false;
 
-  private okxRest = new RestClientV5();
+  private okxRest = new RestClient();
 
   private aggregators: { [symbol: string]: OrderFlowAggregator } = {};
   private candleQueue: CandleQueue;
@@ -101,28 +101,29 @@ export class OkxService {
   }
 
   private async subscribeToWS(): Promise<void> {
-    const instrumentInfo = await this.okxRest.getInstrumentsInfo({ category: 'linear' });
-    const symbols =
-      this.selectedSymbols.length > 0
-        ? this.selectedSymbols
-        : instrumentInfo.result.list.filter((item) => item.contractType === 'LinearPerpetual').map(({ symbol }) => symbol);
-    const topics: string[] = symbols.map((symbol: string) => `publicTrade.${symbol}`);
+    const instrumentInfo: Instrument[] = await this.okxRest.getInstruments('SWAP');
+    const filteredInstruments: Instrument[] = instrumentInfo.filter((instrument: Instrument) => {
+      const symbol = normaliseSymbolName(instrument.instId);
+      return instrument['settleCcy'] === 'USDT' && (this.selectedSymbols.length > 0 ? this.selectedSymbols.includes(symbol) : true);
+    });
+    const symbols = filteredInstruments.map((instrument) => instrument.instId);
 
     this.okxWsService.initWebSocket(instrumentInfo);
 
-    await this.okxWsService.subscribeToTopics(topics, 'linear');
+    await this.okxWsService.subscribeToTopics(symbols, 'linear');
 
     this.didFinishConnectingWS = true;
 
-    this.okxWsService.tradeUpdates.subscribe((trades: TradeData[]) => {
+    this.okxWsService.tradeUpdates.subscribe((trades: Trade[]) => {
       for (let i = 0; i < trades.length; i++) {
-        const isPassiveBid: boolean = trades[i].S === 'Sell'; // The aggressive side is selling
-        this.processNewTrades(trades[i].s, isPassiveBid, trades[i].v, trades[i].p);
+        const isPassiveBid: boolean = trades[i].side === 'sell';
+        this.processNewTrades(trades[i].instId, isPassiveBid, trades[i].sz, Number(trades[i].px));
       }
     });
   }
 
-  private getOrderFlowAggregator(symbol: string, interval: string): OrderFlowAggregator {
+  private getOrderFlowAggregator(instrumentId: string, interval: string): OrderFlowAggregator {
+    const symbol = normaliseSymbolName(instrumentId);
     if (!this.aggregators[symbol]) {
       const intervalSizeMs: number = KlineIntervalMs[interval];
       if (!intervalSizeMs) {
@@ -160,12 +161,12 @@ export class OkxService {
     return null;
   }
 
-  private processNewTrades(symbol: string, isPassiveBid: boolean, positionSize: string, price: number) {
+  private processNewTrades(instrumentId: string, isPassiveBid: boolean, positionSize: string, price: number) {
     if (!this.didFinishConnectingWS) {
       return;
     }
 
-    const aggr = this.getOrderFlowAggregator(symbol, this.BASE_INTERVAL);
+    const aggr = this.getOrderFlowAggregator(instrumentId, this.BASE_INTERVAL);
     aggr.processNewTrades(isPassiveBid, Number(positionSize), price);
   }
 }
