@@ -3,7 +3,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { RestClientV5 } from 'bybit-api';
 import { DatabaseService } from '@database';
 import { RabbitMQService } from '@rabbitmq';
-import { BybitWebSocketService } from './BybitWebsocketService';
+import { BybitWebSocketService } from './bybit.websocket.service';
 import { IFootPrintClosedCandle } from '@orderflow/dto/orderflow.dto';
 import { CandleQueue } from '@orderflow/utils/candleQueue';
 import { OrderFlowAggregator } from '@orderflow/utils/orderFlowAggregator';

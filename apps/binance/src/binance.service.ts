@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { USDMClient, WsMessageAggTradeRaw } from 'binance';
-import { BinanceWebSocketService } from './BinanceWebsocketService';
+import { BinanceWebSocketService } from './binance.websocket.service';
 import { DatabaseService } from '@database';
 import { RabbitMQService } from '@rabbitmq';
 import { aggregationIntervalMap } from '@orderflow/constants/aggregation';
