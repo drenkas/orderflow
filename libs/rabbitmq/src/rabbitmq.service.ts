@@ -49,6 +49,8 @@ export class RabbitMQService implements OnModuleInit, OnModuleDestroy {
   }
 
   async publish(exchangeName: string, message: object) {
+    if (!this.connection || !this.channel) return;
+
     try {
       const messageBuffer = Buffer.from(JSON.stringify(message));
       this.channel.publish(this.EXCHANGE, exchangeName, messageBuffer);
