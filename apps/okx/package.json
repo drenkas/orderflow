@@ -1,5 +1,5 @@
 {
-  "name": "orderflow-binance",
+  "name": "orderflow-okx",
   "version": "0.0.1",
   "description": "",
   "author": "focus1691",
@@ -7,7 +7,7 @@
   "license": "UNLICENSED",
   "scripts": {
     "build": "nest build",
-    "build:binance": "nest build binance --webpack",
+    "build:okx": "nest build okx --webpack",
     "format": "prettier --write \"apps/**/*.ts\" \"libs/**/*.ts\"",
     "start": "nest start",
     "start:dev": "nest start --watch",

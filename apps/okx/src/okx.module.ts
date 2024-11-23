@@ -4,11 +4,11 @@ import { ScheduleModule } from '@nestjs/schedule';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { DatabaseModule, DatabaseConfiguration } from '@database';
 import { RabbitMQModule } from '@rabbitmq';
-import { BinanceService } from './binance.service';
-import { BinanceWebSocketService } from './binance.websocket.service';
+import { OkxService } from './okx.service';
+import { OkxWebSocketService } from './okx.websocket.service';
 
 @Module({
   imports: [ConfigModule.forRoot({ isGlobal: true }), ScheduleModule.forRoot(), TypeOrmModule.forRoot(DatabaseConfiguration), DatabaseModule, RabbitMQModule],
-  providers: [BinanceService, BinanceWebSocketService]
+  providers: [OkxService, OkxWebSocketService]
 })
-export class BinanceModule {}
+export class OkxModule {}

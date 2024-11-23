@@ -1,11 +1,11 @@
 import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-import { BybitModule } from './bybit.module';
+import { OkxModule } from './okx.module';
 
 async function bootstrap() {
-  Logger.log(new Date(), `Starting apps/bybit...`, 'Startup');
+  Logger.log(new Date(), `Starting apps/okx...`, 'Startup');
 
-  const app = await NestFactory.create(BybitModule);
+  const app = await NestFactory.create(OkxModule);
 
   setupExceptionCatchers();
   await app.listen(3000);

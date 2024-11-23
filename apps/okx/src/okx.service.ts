@@ -1,9 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { RestClientV5 } from 'bybit-api';
+import { Instrument, RestClient, Trade } from 'okx-api';
 import { DatabaseService } from '@database';
 import { RabbitMQService } from '@rabbitmq';
-import { BybitWebSocketService } from './bybit.websocket.service';
+import { OkxWebSocketService } from './okx.websocket.service';
 import { IFootPrintClosedCandle } from '@orderflow/dto/orderflow.dto';
 import { CandleQueue } from '@orderflow/utils/candleQueue';
 import { OrderFlowAggregator } from '@orderflow/utils/orderFlowAggregator';
@@ -12,11 +12,11 @@ import { aggregationIntervalMap } from '@orderflow/constants/aggregation';
 import { findAllEffectedHTFIntervalsOnCandleClose } from '@orderflow/utils/candleBuildHelper';
 import { mergeFootPrintCandles } from '@orderflow/utils/orderFlowUtil';
 import { Exchange } from '@shared/constants/exchange';
-import { TradeData } from './websocket.responses';
+import { normaliseSymbolName } from '@shared/utils/okx';
 
 @Injectable()
-export class ByBitService {
-  private logger: Logger = new Logger(ByBitService.name);
+export class OkxService {
+  private logger: Logger = new Logger(OkxService.name);
   private selectedSymbols: string[] = process.env.SYMBOLS?.split(',') ?? [];
   private readonly BASE_INTERVAL = INTERVALS.ONE_MINUTE;
   private readonly HTF_INTERVALS = [
@@ -35,21 +35,21 @@ export class ByBitService {
 
   private didFinishConnectingWS: boolean = false;
 
-  private bybitRest = new RestClientV5();
+  private okxRest = new RestClient();
 
   private aggregators: { [symbol: string]: OrderFlowAggregator } = {};
   private candleQueue: CandleQueue;
 
   constructor(
     private readonly databaseService: DatabaseService,
-    private readonly bybitWsService: BybitWebSocketService,
+    private readonly okxWsService: OkxWebSocketService,
     private readonly rabbitmqService: RabbitMQService
   ) {
-    this.candleQueue = new CandleQueue(Exchange.BYBIT, this.databaseService, this.rabbitmqService);
+    this.candleQueue = new CandleQueue(Exchange.OKX, this.databaseService, this.rabbitmqService);
   }
 
   async onModuleInit() {
-    this.logger.log(`Starting Bybit Orderflow service for Live candle building`);
+    this.logger.log(`Starting Okx Orderflow service for Live candle building`);
     await this.subscribeToWS();
   }
 
@@ -101,35 +101,36 @@ export class ByBitService {
   }
 
   private async subscribeToWS(): Promise<void> {
-    const instrumentInfo = await this.bybitRest.getInstrumentsInfo({ category: 'linear' });
-    const symbols =
-      this.selectedSymbols.length > 0
-        ? this.selectedSymbols
-        : instrumentInfo.result.list.filter((item) => item.contractType === 'LinearPerpetual').map(({ symbol }) => symbol);
-    const topics: string[] = symbols.map((symbol: string) => `publicTrade.${symbol}`);
+    const instrumentInfo: Instrument[] = await this.okxRest.getInstruments('SWAP');
+    const filteredInstruments: Instrument[] = instrumentInfo.filter((instrument: Instrument) => {
+      const symbol = normaliseSymbolName(instrument.instId);
+      return instrument['settleCcy'] === 'USDT' && (this.selectedSymbols.length > 0 ? this.selectedSymbols.includes(symbol) : true);
+    });
+    const symbols = filteredInstruments.map((instrument) => instrument.instId);
 
-    this.bybitWsService.initWebSocket(instrumentInfo);
+    this.okxWsService.initWebSocket(instrumentInfo);
 
-    await this.bybitWsService.subscribeToTopics(topics, 'linear');
+    await this.okxWsService.subscribeToTopics(symbols, 'linear');
 
     this.didFinishConnectingWS = true;
 
-    this.bybitWsService.tradeUpdates.subscribe((trades: TradeData[]) => {
+    this.okxWsService.tradeUpdates.subscribe((trades: Trade[]) => {
       for (let i = 0; i < trades.length; i++) {
-        const isPassiveBid: boolean = trades[i].S === 'Sell'; // The aggressive side is selling
-        this.processNewTrades(trades[i].s, isPassiveBid, trades[i].v, trades[i].p);
+        const isPassiveBid: boolean = trades[i].side === 'sell';
+        this.processNewTrades(trades[i].instId, isPassiveBid, trades[i].sz, Number(trades[i].px));
       }
     });
   }
 
-  private getOrderFlowAggregator(symbol: string, interval: string): OrderFlowAggregator {
+  private getOrderFlowAggregator(instrumentId: string, interval: string): OrderFlowAggregator {
+    const symbol = normaliseSymbolName(instrumentId);
     if (!this.aggregators[symbol]) {
       const intervalSizeMs: number = KlineIntervalMs[interval];
       if (!intervalSizeMs) {
         throw new Error(`Unknown ms per interval "${interval}"`);
       }
 
-      this.aggregators[symbol] = new OrderFlowAggregator('bybit', symbol, interval, intervalSizeMs, {});
+      this.aggregators[symbol] = new OrderFlowAggregator(Exchange.OKX, symbol, interval, intervalSizeMs, {});
     }
 
     return this.aggregators[symbol];
@@ -144,7 +145,7 @@ export class ByBitService {
     const aggregationStart = closeTimeMs - baseIntervalMs * count;
     const aggregationEnd = closeTimeMs;
 
-    const candles = await this.databaseService.getCandles(Exchange.BYBIT, symbol, baseInterval, aggregationStart, aggregationEnd);
+    const candles = await this.databaseService.getCandles(Exchange.OKX, symbol, baseInterval, aggregationStart, aggregationEnd);
 
     if (candles?.length === count) {
       const aggregatedCandle = mergeFootPrintCandles(candles, targetInterval);
@@ -160,12 +161,12 @@ export class ByBitService {
     return null;
   }
 
-  private processNewTrades(symbol: string, isPassiveBid: boolean, positionSize: string, price: number) {
+  private processNewTrades(instrumentId: string, isPassiveBid: boolean, positionSize: string, price: number) {
     if (!this.didFinishConnectingWS) {
       return;
     }
 
-    const aggr = this.getOrderFlowAggregator(symbol, this.BASE_INTERVAL);
+    const aggr = this.getOrderFlowAggregator(instrumentId, this.BASE_INTERVAL);
     aggr.processNewTrades(isPassiveBid, Number(positionSize), price);
   }
 }

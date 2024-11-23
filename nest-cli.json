@@ -28,6 +28,15 @@
         "tsConfigPath": "apps/bybit/tsconfig.app.json"
       }
     },
+    "okx": {
+      "type": "application",
+      "root": "apps/okx",
+      "entryFile": "main",
+      "sourceRoot": "apps/okx/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/okx/tsconfig.app.json"
+      }
+    },
     "binance-backfill": {
       "type": "application",
       "root": "apps/binance-backfill",
