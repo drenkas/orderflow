@@ -15,7 +15,7 @@ services:
       - 'host.docker.internal:host-gateway'
     entrypoint: ['node', 'dist/main.js']
     ports:
-      - 5000:3000
+      - ${BINANCE_DOCKER_PORT}:3000
   bybit:
     restart: always
     build:
@@ -31,4 +31,4 @@ services:
       - 'host.docker.internal:host-gateway'
     entrypoint: ['node', 'dist/main.js']
     ports:
-      - 5001:3000
+      - ${BYBIT_DOCKER_PORT}:3000
