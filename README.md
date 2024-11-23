@@ -25,6 +25,7 @@ An Orderflow trade aggregator to deploy in the cloud that builds Footprint Candl
    - `RABBITMQ_URL`
    - `BINANCE_DOCKER_PORT`
    - `BYBIT_DOCKER_PORT`
+   - `OKX_DOCKER_PORT`
    - `SYMBOLS`
 
 5. Build and Run the services:

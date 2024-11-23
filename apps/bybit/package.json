@@ -25,6 +25,7 @@
     "amqp-connection-manager": "^4.1.14",
     "amqplib": "^0.10.4",
     "binance": "^2.13.2",
+    "bitget-api": "^2.0.13",
     "bybit-api": "^3.10.15",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.0",
