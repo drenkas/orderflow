@@ -1,12 +1,6 @@
 # Orderflow
 
-Real-time services to deploy in a docker container to aggregate live trades and build footprint candles. Supports Binance and Bybit (crypto).
-
-Services:
-
-1. Binance Live.
-2. Bybit Live.
-3. Binance Backfiller.
+An Orderflow trade aggregator to deploy in the cloud that builds Footprint Candles by aggregating raw trades from Websockets. Supports Binance and Bybit for now.
 
 ## Get Started
 
@@ -20,16 +14,25 @@ Services:
    docker run -d --name timescaledb -p 5433:5432 -e POSTGRES_PASSWORD=password timescale/timescaledb-ha:pg14-latest
    ```
 
-3. Configure environment variables:
+3. Set up a RabbitMQ instance (optional) to listen for candle closes:
+   ```
+   docker run -d --name rabbitmq -p 5672:5672 -p 15672:15672 -e RABBITMQ_DEFAULT_USER=admin -e RABBITMQ_DEFAULT_PASS=admin rabbitmq:4.0-management
+   ```
+
+4. Configure environment variables:
    - `DB_URL`
-   - `SYMBOLS` (CSV. Defaults to all exchange symbols)
-  
-4. Build and Run the services:
+   - `USE_RABBITMQ`
+   - `RABBITMQ_URL`
+   - `BINANCE_DOCKER_PORT`
+   - `BYBIT_DOCKER_PORT`
+   - `SYMBOLS`
+
+5. Build and Run the services:
    ```
-   docker-compose up --build -d binance
+   yarn binance:docker
    ```
    ```
-   docker-compose up --build -d bybit
+   yarn bybit:docker
    ```
    
 

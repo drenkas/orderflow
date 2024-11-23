@@ -8,11 +8,14 @@ services:
     environment:
       - DB_URL=${DB_URL}
       - SYMBOLS=${SYMBOLS}
+      - USE_RABBITMQ=${USE_RABBITMQ}
+      - RABBITMQ_URL=${RABBITMQ_URL}
+      - RABBITMQ_EXCHANGE=${RABBITMQ_EXCHANGE}
     extra_hosts:
       - 'host.docker.internal:host-gateway'
     entrypoint: ['node', 'dist/main.js']
     ports:
-      - 5000:3000
+      - ${BINANCE_DOCKER_PORT}:3000
   bybit:
     restart: always
     build:
@@ -21,8 +24,11 @@ services:
     environment:
       - DB_URL=${DB_URL}
       - SYMBOLS=${SYMBOLS}
+      - USE_RABBITMQ=${USE_RABBITMQ}
+      - RABBITMQ_URL=${RABBITMQ_URL}
+      - RABBITMQ_EXCHANGE=${RABBITMQ_EXCHANGE}
     extra_hosts:
       - 'host.docker.internal:host-gateway'
     entrypoint: ['node', 'dist/main.js']
     ports:
-      - 5001:3000
+      - ${BYBIT_DOCKER_PORT}:3000

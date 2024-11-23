@@ -10,15 +10,6 @@
     "tsConfigPath": "apps/binance/tsconfig.app.json"
   },
   "projects": {
-    "database": {
-      "type": "library",
-      "root": "libs/database",
-      "entryFile": "index",
-      "sourceRoot": "libs/database/src",
-      "compilerOptions": {
-        "tsConfigPath": "libs/database/tsconfig.lib.json"
-      }
-    },
     "binance": {
       "type": "application",
       "root": "apps/binance",
@@ -37,15 +28,6 @@
         "tsConfigPath": "apps/bybit/tsconfig.app.json"
       }
     },
-    "orderflow": {
-      "type": "library",
-      "root": "libs/@/orderflow",
-      "entryFile": "index",
-      "sourceRoot": "libs/@/orderflow/src",
-      "compilerOptions": {
-        "tsConfigPath": "libs/@/orderflow/tsconfig.lib.json"
-      }
-    },
     "binance-backfill": {
       "type": "application",
       "root": "apps/binance-backfill",
@@ -55,6 +37,24 @@
         "tsConfigPath": "apps/binance-backfill/tsconfig.app.json"
       }
     },
+    "orderflow": {
+      "type": "library",
+      "root": "libs/orderflow",
+      "entryFile": "index",
+      "sourceRoot": "libs/orderflow/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/orderflow/tsconfig.lib.json"
+      }
+    },
+    "database": {
+      "type": "library",
+      "root": "libs/database",
+      "entryFile": "index",
+      "sourceRoot": "libs/database/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/database/tsconfig.lib.json"
+      }
+    },
     "shared": {
       "type": "library",
       "root": "libs/shared",
@@ -62,6 +62,15 @@
       "sourceRoot": "libs/shared/src",
       "compilerOptions": {
         "tsConfigPath": "libs/shared/tsconfig.lib.json"
+      }
+    },
+    "rabbitmq": {
+      "type": "library",
+      "root": "libs/rabbitmq",
+      "entryFile": "index",
+      "sourceRoot": "libs/rabbitmq/src",
+      "compilerOptions": {
+        "tsConfigPath": "libs/rabbitmq/tsconfig.lib.json"
       }
     }
   }
