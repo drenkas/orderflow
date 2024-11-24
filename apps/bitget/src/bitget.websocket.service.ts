@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-empty-function */
 import { Injectable } from '@nestjs/common';
 import { Observable, Subject } from 'rxjs';
-import { DefaultLogger, WebsocketClientV2, WsBaseEvent, WsSnapshotChannelEvent, WsTopicSubscribePublicArgsV2 } from 'bitget-api';
+import { DefaultLogger, WebsocketClientV2, WsSnapshotChannelEvent, WsTopicSubscribePublicArgsV2 } from 'bitget-api';
 import { getRoundedAssetPrice } from '@shared/utils/bitget';
 import { ITrade, IWsTrade } from './bitget.types';
 
