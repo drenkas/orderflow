@@ -37,6 +37,15 @@
         "tsConfigPath": "apps/okx/tsconfig.app.json"
       }
     },
+    "bitget": {
+      "type": "application",
+      "root": "apps/bitget",
+      "entryFile": "main",
+      "sourceRoot": "apps/bitget/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/bitget/tsconfig.app.json"
+      }
+    },
     "binance-backfill": {
       "type": "application",
       "root": "apps/binance-backfill",

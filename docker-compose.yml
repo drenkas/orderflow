@@ -32,3 +32,35 @@ services:
     entrypoint: ['node', 'dist/main.js']
     ports:
       - ${BYBIT_DOCKER_PORT}:3000
+  okx:
+    restart: always
+    build:
+      context: .
+      dockerfile: ./apps/okx/Dockerfile
+    environment:
+      - DB_URL=${DB_URL}
+      - SYMBOLS=${SYMBOLS}
+      - USE_RABBITMQ=${USE_RABBITMQ}
+      - RABBITMQ_URL=${RABBITMQ_URL}
+      - RABBITMQ_EXCHANGE=${RABBITMQ_EXCHANGE}
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    entrypoint: ['node', 'dist/main.js']
+    ports:
+      - ${OKX_DOCKER_PORT}:3000
+  bitget:
+    restart: always
+    build:
+      context: .
+      dockerfile: ./apps/bitget/Dockerfile
+    environment:
+      - DB_URL=${DB_URL}
+      - SYMBOLS=${SYMBOLS}
+      - USE_RABBITMQ=${USE_RABBITMQ}
+      - RABBITMQ_URL=${RABBITMQ_URL}
+      - RABBITMQ_EXCHANGE=${RABBITMQ_EXCHANGE}
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    entrypoint: ['node', 'dist/main.js']
+    ports:
+      - ${BITGET_DOCKER_PORT}:3000

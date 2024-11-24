@@ -1,6 +1,6 @@
 # Orderflow
 
-An Orderflow trade aggregator to deploy in the cloud that builds Footprint Candles by aggregating raw trades from Websockets. Supports Binance, Bybit and Okx for now.
+An Orderflow trade aggregator to deploy in the cloud that builds Footprint Candles by aggregating raw trades from Websockets. Supports Binance, Bybit, Okx, and Bitget for now.
 
 ## Get Started
 
@@ -25,6 +25,8 @@ An Orderflow trade aggregator to deploy in the cloud that builds Footprint Candl
    - `RABBITMQ_URL`
    - `BINANCE_DOCKER_PORT`
    - `BYBIT_DOCKER_PORT`
+   - `OKX_DOCKER_PORT`
+   - `BITGET_DOCKER_PORT`
    - `SYMBOLS`
 
 5. Build and Run the services:
@@ -36,6 +38,9 @@ An Orderflow trade aggregator to deploy in the cloud that builds Footprint Candl
    ```
    ```
    yarn okx:docker
+   ```
+   ```
+   yarn okx:bitget
    ```
 
 ## Binance Backfill

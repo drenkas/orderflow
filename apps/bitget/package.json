@@ -1,5 +1,5 @@
 {
-  "name": "orderflow-bybit",
+  "name": "orderflow-bitget",
   "version": "0.0.1",
   "description": "",
   "author": "focus1691",
@@ -7,7 +7,7 @@
   "license": "UNLICENSED",
   "scripts": {
     "build": "nest build",
-    "build:bybit": "nest build bybit --webpack",
+    "build:bitget": "nest build bitget --webpack",
     "format": "prettier --write \"apps/**/*.ts\" \"libs/**/*.ts\"",
     "start": "nest start",
     "start:dev": "nest start --watch",
