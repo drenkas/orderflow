@@ -24,9 +24,10 @@ An Orderflow trade aggregator to deploy in the cloud that builds Footprint Candl
    - `USE_RABBITMQ`
    - `RABBITMQ_URL`
    - `BINANCE_DOCKER_PORT`
-   - `BYBIT_DOCKER_PORT`
-   - `OKX_DOCKER_PORT`
    - `BITGET_DOCKER_PORT`
+   - `BYBIT_DOCKER_PORT`
+   - `GATEIO_DOCKER_PORT`
+   - `OKX_DOCKER_PORT`
    - `SYMBOLS`
 
 5. Build and Run the services:
@@ -34,13 +35,16 @@ An Orderflow trade aggregator to deploy in the cloud that builds Footprint Candl
    yarn binance:docker
    ```
    ```
+   yarn bitget:docker
+   ```
+   ```
+   yarn gateio:docker
+   ```
+   ```
    yarn bybit:docker
    ```
    ```
    yarn okx:docker
-   ```
-   ```
-   yarn bitget:docker
    ```
 
 ## Binance Backfill

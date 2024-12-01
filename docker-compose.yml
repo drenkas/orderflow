@@ -52,3 +52,14 @@ services:
     entrypoint: ['node', 'dist/main.js']
     ports:
       - ${BITGET_DOCKER_PORT}:3000
+  gateio:
+    restart: always
+    build:
+      context: .
+      dockerfile: ./apps/gateio/Dockerfile
+    environment: *common-environment
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    entrypoint: ['node', 'dist/main.js']
+    ports:
+      - ${GATEIO_DOCKER_PORT}:3000

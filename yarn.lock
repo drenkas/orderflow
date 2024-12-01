@@ -3017,6 +3017,15 @@ function-bind@^1.1.1:
   resolved "https://registry.yarnpkg.com/function-bind/-/function-bind-1.1.1.tgz#a56899d3ea3c9bab874bb9773b7c5ede92f4895d"
   integrity sha512-yIovAzMX49sF8Yl58fSCWJ5svSLuaibPxXQJFLmBObTuCr0Mf1KiPopGM9NiFjiYBCbfaa2Fh6breQ6ANVTI0A==
 
+gateio-api@^1.1.1:
+  version "1.1.1"
+  resolved "https://registry.yarnpkg.com/gateio-api/-/gateio-api-1.1.1.tgz#7a390b8dc11abafb37fb925baaa5637e1ac055dc"
+  integrity sha512-OCmH4W+DnK+TvcxTO0Pkg8CSxWbltp8wLxJIVTbqMZlTph6HiYA4EhZb8aVV3J3F4Y8xsi/nAQoYEiUiKncifA==
+  dependencies:
+    axios "^1.6.6"
+    isomorphic-ws "^4.0.1"
+    ws "^8.16.0"
+
 gensync@^1.0.0-beta.2:
   version "1.0.0-beta.2"
   resolved "https://registry.yarnpkg.com/gensync/-/gensync-1.0.0-beta.2.tgz#32a6ee76c3d7f52d46b2b1ae5d93fea8580a25e0"
@@ -5903,7 +5912,7 @@ ws@^7.4.0:
   resolved "https://registry.yarnpkg.com/ws/-/ws-7.5.9.tgz#54fa7db29f4c7cec68b1ddd3a89de099942bb591"
   integrity sha512-F+P9Jil7UiSKSkppIiD94dN07AwvFixvLIj1Og1Rl9GGMuNipJnV9JzjD6XuqmAeiswGvUmNLjr5cFuXwNS77Q==
 
-ws@^8.9.0:
+ws@^8.16.0, ws@^8.9.0:
   version "8.18.0"
   resolved "https://registry.yarnpkg.com/ws/-/ws-8.18.0.tgz#0d7505a6eafe2b0e712d232b42279f53bc289bbc"
   integrity sha512-8VbfWfHLbbwu3+N6OKsOMpBdT4kXPDDB9cJk2bJ6mh9ucxdlnNvH1e+roYkKmN9Nxw2yjz7VzeO9oOz2zJ04Pw==
