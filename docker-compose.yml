@@ -1,16 +1,19 @@
 version: '3.8'
+x-environment:
+  &common-environment
+  - DB_URL=${DB_URL}
+  - SYMBOLS=${SYMBOLS}
+  - USE_RABBITMQ=${USE_RABBITMQ}
+  - RABBITMQ_URL=${RABBITMQ_URL}
+  - RABBITMQ_EXCHANGE=${RABBITMQ_EXCHANGE}
+
 services:
   binance:
     restart: always
     build:
       context: .
       dockerfile: ./apps/binance/Dockerfile
-    environment:
-      - DB_URL=${DB_URL}
-      - SYMBOLS=${SYMBOLS}
-      - USE_RABBITMQ=${USE_RABBITMQ}
-      - RABBITMQ_URL=${RABBITMQ_URL}
-      - RABBITMQ_EXCHANGE=${RABBITMQ_EXCHANGE}
+    environment: *common-environment
     extra_hosts:
       - 'host.docker.internal:host-gateway'
     entrypoint: ['node', 'dist/main.js']
@@ -21,12 +24,7 @@ services:
     build:
       context: .
       dockerfile: ./apps/bybit/Dockerfile
-    environment:
-      - DB_URL=${DB_URL}
-      - SYMBOLS=${SYMBOLS}
-      - USE_RABBITMQ=${USE_RABBITMQ}
-      - RABBITMQ_URL=${RABBITMQ_URL}
-      - RABBITMQ_EXCHANGE=${RABBITMQ_EXCHANGE}
+    environment: *common-environment
     extra_hosts:
       - 'host.docker.internal:host-gateway'
     entrypoint: ['node', 'dist/main.js']
@@ -37,12 +35,7 @@ services:
     build:
       context: .
       dockerfile: ./apps/okx/Dockerfile
-    environment:
-      - DB_URL=${DB_URL}
-      - SYMBOLS=${SYMBOLS}
-      - USE_RABBITMQ=${USE_RABBITMQ}
-      - RABBITMQ_URL=${RABBITMQ_URL}
-      - RABBITMQ_EXCHANGE=${RABBITMQ_EXCHANGE}
+    environment: *common-environment
     extra_hosts:
       - 'host.docker.internal:host-gateway'
     entrypoint: ['node', 'dist/main.js']
@@ -53,12 +46,7 @@ services:
     build:
       context: .
       dockerfile: ./apps/bitget/Dockerfile
-    environment:
-      - DB_URL=${DB_URL}
-      - SYMBOLS=${SYMBOLS}
-      - USE_RABBITMQ=${USE_RABBITMQ}
-      - RABBITMQ_URL=${RABBITMQ_URL}
-      - RABBITMQ_EXCHANGE=${RABBITMQ_EXCHANGE}
+    environment: *common-environment
     extra_hosts:
       - 'host.docker.internal:host-gateway'
     entrypoint: ['node', 'dist/main.js']
