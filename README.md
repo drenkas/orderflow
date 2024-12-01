@@ -78,7 +78,7 @@ const footprintCandlePrices = {
 };
 
 const stackedImbalance = Orderflow.detectStackedImbalances(footprintCandlePrices, {
-  threshold: 2, // Minimum volume imbalance ratio
+  threshold: 200, // Minimum volume imbalance ratio
   stackCount: 3, // Number of consecutive levels
   tickSize: 0.1, // Price increment
 });
