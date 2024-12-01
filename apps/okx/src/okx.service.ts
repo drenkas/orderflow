@@ -106,21 +106,20 @@ export class OkxService {
       const symbol = normaliseSymbolName(instrument.instId);
       return instrument['settleCcy'] === 'USDT' && (this.selectedSymbols.length > 0 ? this.selectedSymbols.includes(symbol) : true);
     });
-    console.log(filteredInstruments, filteredInstruments.length);
-    // const symbols = filteredInstruments.map((instrument) => instrument.instId);
+    const symbols = filteredInstruments.map((instrument) => instrument.instId);
 
-    // this.okxWsService.initWebSocket(instrumentInfo);
+    this.okxWsService.initWebSocket(instrumentInfo);
 
-    // await this.okxWsService.subscribeToTopics(symbols, 'linear');
+    await this.okxWsService.subscribeToTopics(symbols, 'linear');
 
-    // this.didFinishConnectingWS = true;
+    this.didFinishConnectingWS = true;
 
-    // this.okxWsService.tradeUpdates.subscribe((trades: Trade[]) => {
-    //   for (let i = 0; i < trades.length; i++) {
-    //     const isPassiveBid: boolean = trades[i].side === 'sell';
-    //     this.processNewTrades(trades[i].instId, isPassiveBid, trades[i].sz, Number(trades[i].px));
-    //   }
-    // });
+    this.okxWsService.tradeUpdates.subscribe((trades: Trade[]) => {
+      for (let i = 0; i < trades.length; i++) {
+        const isPassiveBid: boolean = trades[i].side === 'sell';
+        this.processNewTrades(trades[i].instId, isPassiveBid, trades[i].sz, Number(trades[i].px));
+      }
+    });
   }
 
   private getOrderFlowAggregator(symbol: string, interval: string): OrderFlowAggregator {
