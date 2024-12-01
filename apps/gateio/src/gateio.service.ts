@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { RestClient } from 'gateio-api';
+import { FuturesContract, FuturesTrade, RestClient } from 'gateio-api';
 import { DatabaseService } from '@database';
 import { RabbitMQService } from '@rabbitmq';
 import { GateioWebSocketService } from './gateio.websocket.service';
@@ -12,7 +12,7 @@ import { aggregationIntervalMap } from '@orderflow/constants/aggregation';
 import { findAllEffectedHTFIntervalsOnCandleClose } from '@orderflow/utils/candleBuildHelper';
 import { mergeFootPrintCandles } from '@orderflow/utils/orderFlowUtil';
 import { Exchange } from '@shared/constants/exchange';
-import { TradeData } from './websocket.responses';
+import { normaliseSymbolName } from './gateio.utils';
 
 @Injectable()
 export class GateioService {
@@ -49,7 +49,7 @@ export class GateioService {
   }
 
   async onModuleInit() {
-    this.logger.log(`Starting Bybit Orderflow service for Live candle building`);
+    this.logger.log(`Starting Gateio Orderflow service for Live candle building`);
     await this.subscribeToWS();
   }
 
@@ -101,23 +101,27 @@ export class GateioService {
   }
 
   private async subscribeToWS(): Promise<void> {
-    const instrumentInfo = await this.gateioRest.getInstrumentsInfo({ category: 'linear' });
-    const symbols =
-      this.selectedSymbols.length > 0
-        ? this.selectedSymbols
-        : instrumentInfo.result.list.filter((item) => item.contractType === 'LinearPerpetual').map(({ symbol }) => symbol);
-    const topics: string[] = symbols.map((symbol: string) => `publicTrade.${symbol}`);
+    const futuresContracts: FuturesContract[] = await this.gateioRest.getFuturesContracts({ settle: 'usdt' });
+    const filteredFuturesContracts = futuresContracts.filter((contract: FuturesContract) => {
+      if (!this.selectedSymbols.length) {
+        return true;
+      }
 
-    this.gateioWsService.initWebSocket(instrumentInfo);
+      const normalisedSymbol = normaliseSymbolName(contract?.name as string);
 
-    await this.gateioWsService.subscribeToTopics(topics, 'linear');
+      return this.selectedSymbols.includes(normalisedSymbol);
+    });
+
+    this.gateioWsService.initWebSocket(filteredFuturesContracts);
+
+    await this.gateioWsService.subscribeToTopics(filteredFuturesContracts, 'perpFuturesUSDTV4');
 
     this.didFinishConnectingWS = true;
 
-    this.gateioWsService.tradeUpdates.subscribe((trades: TradeData[]) => {
-      for (let i = 0; i < trades.length; i++) {
-        const isPassiveBid: boolean = trades[i].S === 'Sell'; // The aggressive side is selling
-        this.processNewTrades(trades[i].s, isPassiveBid, trades[i].v, trades[i].p);
+    this.gateioWsService.tradeUpdates.subscribe((trades: FuturesTrade[]) => {
+      for (const trade of trades) {
+        const isPassiveBid: boolean = trade.size > 0; // Positive size means market sell and limit buy.
+        this.processNewTrades(trade.contract, isPassiveBid, Math.abs(trade.size), Number(trade.price)); // Use absolute size
       }
     });
   }
@@ -160,12 +164,13 @@ export class GateioService {
     return null;
   }
 
-  private processNewTrades(symbol: string, isPassiveBid: boolean, positionSize: string, price: number) {
+  private processNewTrades(symbol: string, isPassiveBid: boolean, positionSize: number, price: number) {
     if (!this.didFinishConnectingWS) {
       return;
     }
 
-    const aggr = this.getOrderFlowAggregator(symbol, this.BASE_INTERVAL);
-    aggr.processNewTrades(isPassiveBid, Number(positionSize), price);
+    const normalisedSymbol = normaliseSymbolName(symbol);
+    const aggr = this.getOrderFlowAggregator(normalisedSymbol, this.BASE_INTERVAL);
+    aggr.processNewTrades(isPassiveBid, positionSize, price);
   }
 }
