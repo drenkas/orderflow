@@ -1,9 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
-import { Instrument, RestClient, Trade } from 'okx-api';
+import { FuturesContract, FuturesTrade, RestClient } from 'gateio-api';
 import { DatabaseService } from '@database';
 import { RabbitMQService } from '@rabbitmq';
-import { OkxWebSocketService } from './okx.websocket.service';
+import { GateioWebSocketService } from './gateio.websocket.service';
 import { IFootPrintClosedCandle } from '@orderflow/dto/orderflow.dto';
 import { CandleQueue } from '@orderflow/utils/candleQueue';
 import { OrderFlowAggregator } from '@orderflow/utils/orderFlowAggregator';
@@ -12,11 +12,11 @@ import { aggregationIntervalMap } from '@orderflow/constants/aggregation';
 import { findAllEffectedHTFIntervalsOnCandleClose } from '@orderflow/utils/candleBuildHelper';
 import { mergeFootPrintCandles } from '@orderflow/utils/orderFlowUtil';
 import { Exchange } from '@shared/constants/exchange';
-import { normaliseSymbolName } from './okx.utils';
+import { normaliseSymbolName } from './gateio.utils';
 
 @Injectable()
-export class OkxService {
-  private logger: Logger = new Logger(OkxService.name);
+export class GateioService {
+  private logger: Logger = new Logger(GateioService.name);
   private selectedSymbols: string[] = process.env.SYMBOLS?.split(',') ?? [];
   private readonly BASE_INTERVAL = INTERVALS.ONE_MINUTE;
   private readonly HTF_INTERVALS = [
@@ -35,21 +35,21 @@ export class OkxService {
 
   private didFinishConnectingWS: boolean = false;
 
-  private okxRest = new RestClient();
+  private gateioRest = new RestClient();
 
   private aggregators: { [symbol: string]: OrderFlowAggregator } = {};
   private candleQueue: CandleQueue;
 
   constructor(
     private readonly databaseService: DatabaseService,
-    private readonly okxWsService: OkxWebSocketService,
+    private readonly gateioWsService: GateioWebSocketService,
     private readonly rabbitmqService: RabbitMQService
   ) {
-    this.candleQueue = new CandleQueue(Exchange.OKX, this.databaseService, this.rabbitmqService);
+    this.candleQueue = new CandleQueue(Exchange.GATEIO, this.databaseService, this.rabbitmqService);
   }
 
   async onModuleInit() {
-    this.logger.log(`Starting Okx Orderflow service for Live candle building`);
+    this.logger.log(`Starting Gateio Orderflow service for Live candle building`);
     await this.subscribeToWS();
   }
 
@@ -101,26 +101,29 @@ export class OkxService {
   }
 
   private async subscribeToWS(): Promise<void> {
-    const instrumentInfo: Instrument[] = await this.okxRest.getInstruments('SWAP');
-    const filteredInstruments: Instrument[] = instrumentInfo.filter((instrument: Instrument) => {
-      const symbol = normaliseSymbolName(instrument.instId);
-      return instrument['settleCcy'] === 'USDT' && (this.selectedSymbols.length > 0 ? this.selectedSymbols.includes(symbol) : true);
+    const futuresContracts: FuturesContract[] = await this.gateioRest.getFuturesContracts({ settle: 'usdt' });
+    const filteredFuturesContracts = futuresContracts.filter((contract: FuturesContract) => {
+      if (!this.selectedSymbols.length) {
+        return true;
+      }
+
+      const normalisedSymbol = normaliseSymbolName(contract?.name as string);
+
+      return this.selectedSymbols.includes(normalisedSymbol);
     });
-    console.log(filteredInstruments, filteredInstruments.length);
-    // const symbols = filteredInstruments.map((instrument) => instrument.instId);
 
-    // this.okxWsService.initWebSocket(instrumentInfo);
+    this.gateioWsService.initWebSocket(filteredFuturesContracts);
 
-    // await this.okxWsService.subscribeToTopics(symbols, 'linear');
+    await this.gateioWsService.subscribeToTopics(filteredFuturesContracts, 'perpFuturesUSDTV4');
 
-    // this.didFinishConnectingWS = true;
+    this.didFinishConnectingWS = true;
 
-    // this.okxWsService.tradeUpdates.subscribe((trades: Trade[]) => {
-    //   for (let i = 0; i < trades.length; i++) {
-    //     const isPassiveBid: boolean = trades[i].side === 'sell';
-    //     this.processNewTrades(trades[i].instId, isPassiveBid, trades[i].sz, Number(trades[i].px));
-    //   }
-    // });
+    this.gateioWsService.tradeUpdates.subscribe((trades: FuturesTrade[]) => {
+      for (const trade of trades) {
+        const isPassiveBid: boolean = trade.size > 0; // Positive size means market sell and limit buy.
+        this.processNewTrades(trade.contract, isPassiveBid, Math.abs(trade.size), Number(trade.price)); // Use absolute size
+      }
+    });
   }
 
   private getOrderFlowAggregator(symbol: string, interval: string): OrderFlowAggregator {
@@ -130,7 +133,7 @@ export class OkxService {
         throw new Error(`Unknown ms per interval "${interval}"`);
       }
 
-      this.aggregators[symbol] = new OrderFlowAggregator(Exchange.OKX, symbol, interval, intervalSizeMs, {});
+      this.aggregators[symbol] = new OrderFlowAggregator(Exchange.GATEIO, symbol, interval, intervalSizeMs, {});
     }
 
     return this.aggregators[symbol];
@@ -145,7 +148,7 @@ export class OkxService {
     const aggregationStart = closeTimeMs - baseIntervalMs * count;
     const aggregationEnd = closeTimeMs;
 
-    const candles = await this.databaseService.getCandles(Exchange.OKX, symbol, baseInterval, aggregationStart, aggregationEnd);
+    const candles = await this.databaseService.getCandles(Exchange.GATEIO, symbol, baseInterval, aggregationStart, aggregationEnd);
 
     if (candles?.length === count) {
       const aggregatedCandle = mergeFootPrintCandles(candles, targetInterval);
@@ -161,13 +164,13 @@ export class OkxService {
     return null;
   }
 
-  private processNewTrades(instrumentId: string, isPassiveBid: boolean, positionSize: string, price: number) {
+  private processNewTrades(symbol: string, isPassiveBid: boolean, positionSize: number, price: number) {
     if (!this.didFinishConnectingWS) {
       return;
     }
 
-    const symbol = normaliseSymbolName(instrumentId);
-    const aggr = this.getOrderFlowAggregator(symbol, this.BASE_INTERVAL);
-    aggr.processNewTrades(isPassiveBid, Number(positionSize), price);
+    const normalisedSymbol = normaliseSymbolName(symbol);
+    const aggr = this.getOrderFlowAggregator(normalisedSymbol, this.BASE_INTERVAL);
+    aggr.processNewTrades(isPassiveBid, positionSize, price);
   }
 }
