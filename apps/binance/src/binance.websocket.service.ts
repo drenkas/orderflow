@@ -3,7 +3,7 @@
 import { Injectable } from '@nestjs/common';
 import { Observable, Subject } from 'rxjs';
 import { DefaultLogger, FuturesExchangeInfo, WebsocketClient, WsMessageAggTradeRaw } from 'binance';
-import { getRoundedAssetPrice } from '@shared/utils/binance';
+import { getRoundedAssetPrice } from './binance.utils';
 
 /** Disable almost all internal logging from the binance ws lib */
 const logger = {

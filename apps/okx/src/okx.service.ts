@@ -12,7 +12,7 @@ import { aggregationIntervalMap } from '@orderflow/constants/aggregation';
 import { findAllEffectedHTFIntervalsOnCandleClose } from '@orderflow/utils/candleBuildHelper';
 import { mergeFootPrintCandles } from '@orderflow/utils/orderFlowUtil';
 import { Exchange } from '@shared/constants/exchange';
-import { normaliseSymbolName } from '@shared/utils/okx';
+import { normaliseSymbolName } from 'apps/okx/src/okx.utils';
 
 @Injectable()
 export class OkxService {

@@ -1803,10 +1803,10 @@ big.js@^5.2.2:
   resolved "https://registry.yarnpkg.com/big.js/-/big.js-5.2.2.tgz#65f0af382f578bcdc742bd9c281e9cb2d7768328"
   integrity sha512-vyL2OymJxmarO8gxMr0mhChsO9QGwhynfuu4+MHTAW6czfq9humCB7rKpUjDd9YUiDPU4mzpyupFSvOClAwbmQ==
 
-binance@^2.13.2:
-  version "2.13.2"
-  resolved "https://registry.yarnpkg.com/binance/-/binance-2.13.2.tgz#5fbb2159d1826cc2e44a4e9b017c7f5c5f5656d7"
-  integrity sha512-fk5pcVU1LzZwuTDwswddy3K5/i93GgFYgkNd4hBEGYe373beYhiIgtkNomP+DxcEwGNi2E3ZjeAq4AtRcAdRaw==
+binance@^2.13.18:
+  version "2.13.18"
+  resolved "https://registry.yarnpkg.com/binance/-/binance-2.13.18.tgz#8c02a9b0398b0a9b312f43b45d8da3718ebba969"
+  integrity sha512-nKnGdVyCKuw/raNLVqIyAdug5YP35M7z9EKUOCAGciF+0x+Hh7yk3GMlQjHZOvrrvqZkbLxMryUxtmONzR3SOA==
   dependencies:
     axios "^1.6.2"
     isomorphic-ws "^4.0.1"
@@ -1971,10 +1971,10 @@ busboy@^1.0.0:
   dependencies:
     streamsearch "^1.1.0"
 
-bybit-api@^3.10.15:
-  version "3.10.15"
-  resolved "https://registry.yarnpkg.com/bybit-api/-/bybit-api-3.10.15.tgz#cb3f95bf84dde20203c0494cc9f0185e44532ce5"
-  integrity sha512-EkJbx9hu+uUJCBxL7RiHUYtmMFbTgtzfYwkRM5x/fLH40mdT8D8OxopY7zfO7kvlIuAj8OjNIkpwfzkCJFZMoA==
+bybit-api@^3.10.27:
+  version "3.10.27"
+  resolved "https://registry.yarnpkg.com/bybit-api/-/bybit-api-3.10.27.tgz#5492c04212dedf8219d879cea01e5cbbe2571b8e"
+  integrity sha512-KAC4HxsnXw8HvmFnviLQGYVz8eT9x/Yod8aa/mMLHqoEMCNzbGNF1j7zoZFh7X0fVXj+8JYG5sePDCot2JNvSw==
   dependencies:
     axios "^1.6.6"
     isomorphic-ws "^4.0.1"
@@ -4331,10 +4331,10 @@ object-inspect@^1.9.0:
   resolved "https://registry.yarnpkg.com/object-inspect/-/object-inspect-1.12.3.tgz#ba62dffd67ee256c8c086dfae69e016cd1f198b9"
   integrity sha512-geUvdk7c+eizMNUDkRpW1wJwgfOiOeHbxBR/hLXK1aT6zmVSO0jsQcs7fj6MGw89jC/cjGfLcNOrtMYtGqm81g==
 
-okx-api@^1.4.11:
-  version "1.4.11"
-  resolved "https://registry.yarnpkg.com/okx-api/-/okx-api-1.4.11.tgz#43bd97ca3af72ac2ccc4df0ee586d21ca0f28629"
-  integrity sha512-la/g0EbibxaZFTKOIi2m5kAwpnwGucqiL+Vin7p+JNBAKuqOtUDniwZaHN5ZkzLj3i2iXq+kweVm03K69HCniw==
+okx-api@^1.4.12:
+  version "1.4.12"
+  resolved "https://registry.yarnpkg.com/okx-api/-/okx-api-1.4.12.tgz#f048fe213eb61dbf500cead2362c86dcc8b43e7b"
+  integrity sha512-WeKiPdA2KtvDPqOTFM6GTkpNRmCcUzua64SeKZVmjoqrVO9B4J/w5MCbzPBpEfTbmY0VXoLPBVYnXv+LqUnlKQ==
   dependencies:
     axios "^1.6.7"
     isomorphic-ws "^4.0.1"

@@ -3,7 +3,7 @@
 import { Injectable } from '@nestjs/common';
 import { Observable, Subject } from 'rxjs';
 import { DefaultLogger, WebsocketClientV2, WsSnapshotChannelEvent, WsTopicSubscribePublicArgsV2 } from 'bitget-api';
-import { getRoundedAssetPrice } from '@shared/utils/bitget';
+import { getRoundedAssetPrice } from './bitget.utils';
 import { ITrade, IWsTrade } from './bitget.types';
 
 const logger = {

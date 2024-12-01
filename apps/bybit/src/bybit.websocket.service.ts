@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Observable, Subject } from 'rxjs';
 import { TradeData, TradeResponse } from './websocket.responses';
 import { APIResponseV3WithTime, CategoryV5, InstrumentInfoResponseV5, WebsocketClient } from 'bybit-api';
-import { getRoundedAssetPrice } from '@shared/utils/bybit';
+import { getRoundedAssetPrice } from './bybit.utils';
 
 @Injectable()
 export class BybitWebSocketService {

@@ -3,7 +3,7 @@
 import { Injectable } from '@nestjs/common';
 import { Observable, Subject } from 'rxjs';
 import { DefaultLogger, Instrument, Trade, WebsocketClient, WsChannelSubUnSubRequestArg, WsDataEvent } from 'okx-api';
-import { getRoundedAssetPrice } from '@shared/utils/okx';
+import { getRoundedAssetPrice } from './okx.utils';
 
 const logger = {
   ...DefaultLogger,
