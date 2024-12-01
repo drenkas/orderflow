@@ -111,7 +111,7 @@ console.log(highVolumeNodes);
     nodePrice: 98894,
     totalVolume: 8.305,
     sellVolume: 0.022,
-    buyVolume: 2.58m
+    buyVolume: 2.58,
     nodeVolumePercent: 0.31
   }
 ]
