@@ -28,6 +28,15 @@
         "tsConfigPath": "apps/bybit/tsconfig.app.json"
       }
     },
+    "gateio": {
+      "type": "application",
+      "root": "apps/gateio",
+      "entryFile": "main",
+      "sourceRoot": "apps/gateio/src",
+      "compilerOptions": {
+        "tsConfigPath": "apps/gateio/tsconfig.app.json"
+      }
+    },
     "okx": {
       "type": "application",
       "root": "apps/okx",
