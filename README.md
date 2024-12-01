@@ -78,9 +78,9 @@ const footprintCandlePrices = {
 };
 
 const stackedImbalance = Orderflow.detectStackedImbalances(footprintCandlePrices, {
-  threshold: 200, // Minimum volume imbalance ratio
-  stackCount: 3, // Number of consecutive levels
-  tickSize: 0.1, // Price increment
+  threshold: 200, // Minimum volume imbalance percentage
+  stackCount: 3, // Number of consecutive imbalances
+  tickSize: 0.1, // Tick Size (e.g., 0.1 for BTCUSDT)
 });
 
 console.log(stackedImbalance);
