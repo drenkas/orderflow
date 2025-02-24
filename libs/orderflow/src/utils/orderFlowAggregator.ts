@@ -102,10 +102,10 @@ export class OrderFlowAggregator {
     return candle;
   }
 
-  public processNewTrades(isPassiveBid: boolean, assetQty: number, price: number) {
+  public processNewTrades(isSellOrder: boolean, assetQty: number, price: number) {
     if (!this.activeCandle) {
       this.createNewCandle();
-      return this.processNewTrades(isPassiveBid, assetQty, price);
+      return this.processNewTrades(isSellOrder, assetQty, price);
     }
 
     const tradeQty = assetQty;
@@ -113,7 +113,7 @@ export class OrderFlowAggregator {
     this.activeCandle.volume += tradeQty;
 
     // Determine which side (bid/ask) and delta direction based on whether it's an aggressive or passive bid
-    const tradeQtyDelta = isPassiveBid ? -tradeQty : tradeQty;
+    const tradeQtyDelta = isSellOrder ? -tradeQty : tradeQty;
 
     // Update delta
     this.activeCandle.volumeDelta += tradeQtyDelta;
@@ -128,14 +128,20 @@ export class OrderFlowAggregator {
       };
     }
 
-    // If bid is passive, sell is a market order (aggressive ask)
-    if (isPassiveBid) {
+    /**
+     * A market sell order executes against a passive bid (limit buy order).
+     * The highest bid price gets filled.
+     */
+    if (isSellOrder) {
       this.activeCandle.aggressiveAsk += tradeQty;
-      this.activeCandle.priceLevels[precisionTrimmedPrice].volSumAsk += tradeQty;
-    } else {
-      // If bid is not passive, buy is a market order (aggressive bid)
-      this.activeCandle.aggressiveBid += tradeQty;
       this.activeCandle.priceLevels[precisionTrimmedPrice].volSumBid += tradeQty;
+    } else {
+      /**
+       * A market buy order executes against a passive ask (limit sell order).
+       * The lowest ask price gets filled.
+       */
+      this.activeCandle.aggressiveBid += tradeQty;
+      this.activeCandle.priceLevels[precisionTrimmedPrice].volSumAsk += tradeQty;
     }
 
     // Update high and low
