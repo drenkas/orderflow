@@ -1,6 +1,6 @@
 # Orderflow
 
-An Orderflow trade aggregator to deploy in the cloud that builds Footprint Candles by aggregating raw trades from Websockets. Supports Binance, Bybit, Okx, and Bitget for now.
+An Orderflow service that processes real-time trade data from WebSockets to build Footprint Candles for individual crypto exchanges. Currently supports Binance, Bybit, OKX, Bitget and Gate.io.
 
 ## Get Started
 
