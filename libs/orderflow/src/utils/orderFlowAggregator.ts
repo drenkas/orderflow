@@ -146,7 +146,7 @@ export class OrderFlowAggregator {
 
     // Update high and low
     const lastHigh = this.activeCandle.high ?? price;
-    const lastLow = this.activeCandle.low ?? price;
+    const lastLow = this.activeCandle.low === 0 ? price : this.activeCandle.low;
 
     this.activeCandle.high = Math.max(lastHigh, price);
     this.activeCandle.low = Math.min(lastLow, price);
