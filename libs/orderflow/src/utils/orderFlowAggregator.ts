@@ -86,7 +86,7 @@ export class OrderFlowAggregator {
       volume: 0,
       volumeDelta: 0,
       high: 0,
-      low: 0,
+      low: Number.MAX_SAFE_INTEGER,
       close: 0,
       priceLevels: {},
       isClosed: false
