@@ -86,7 +86,7 @@ export class OrderFlowAggregator {
       volume: 0,
       volumeDelta: 0,
       high: 0,
-      low: 0,
+      low: Number.MAX_SAFE_INTEGER,
       close: 0,
       priceLevels: {},
       isClosed: false
@@ -146,7 +146,7 @@ export class OrderFlowAggregator {
 
     // Update high and low
     const lastHigh = this.activeCandle.high ?? price;
-    const lastLow = this.activeCandle.low ?? price;
+    const lastLow = this.activeCandle.low === 0 ? price : this.activeCandle.low;
 
     this.activeCandle.high = Math.max(lastHigh, price);
     this.activeCandle.low = Math.min(lastLow, price);
