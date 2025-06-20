@@ -6,9 +6,18 @@ import { DatabaseModule, DatabaseConfiguration } from '@database';
 import { RabbitMQModule } from '@rabbitmq';
 import { BinanceService } from './binance.service';
 import { BinanceWebSocketService } from './binance.websocket.service';
+import { TelegramService } from '@shared/telegram.service';
+import { TelegramChat } from '@database/entity/telegram_chat.entity';
 
 @Module({
-  imports: [ConfigModule.forRoot({ isGlobal: true }), ScheduleModule.forRoot(), TypeOrmModule.forRoot(DatabaseConfiguration), DatabaseModule, RabbitMQModule],
-  providers: [BinanceService, BinanceWebSocketService]
+  imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
+    ScheduleModule.forRoot(),
+    TypeOrmModule.forRoot(DatabaseConfiguration),
+    DatabaseModule,
+    RabbitMQModule,
+    TypeOrmModule.forFeature([TelegramChat])
+  ],
+  providers: [BinanceService, BinanceWebSocketService, TelegramService]
 })
 export class BinanceModule {}

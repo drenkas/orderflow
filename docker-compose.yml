@@ -6,6 +6,7 @@ x-environment:
   - USE_RABBITMQ=${USE_RABBITMQ}
   - RABBITMQ_URL=${RABBITMQ_URL}
   - RABBITMQ_EXCHANGE=${RABBITMQ_EXCHANGE}
+  - TG_BOT_API=${TG_BOT_API}
 
 services:
   binance:

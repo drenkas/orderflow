@@ -38,3 +38,5 @@ lerna-debug.log*
 .env
 
 .npmrc
+output/indicators_2025-06-20T11-09-03-998Z.json
+output/indicators_2025-06-20T11-44-08-915Z.json

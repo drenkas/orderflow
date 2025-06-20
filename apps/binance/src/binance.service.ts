@@ -13,6 +13,8 @@ import { INTERVALS } from '@shared/utils/intervals';
 import { KlineIntervalMs } from '@shared/constants/intervals';
 import { Exchange } from '@shared/constants/exchange';
 import { IFootPrintClosedCandle } from '@orderflow/dto/orderflow.dto';
+import { TelegramService } from '@shared/telegram.service';
+import { computeAndSendNotification } from '@orderflow/utils/indicatorNotifier';
 
 @Injectable()
 export class BinanceService {
@@ -46,7 +48,8 @@ export class BinanceService {
   constructor(
     private readonly databaseService: DatabaseService,
     private readonly binanceWsService: BinanceWebSocketService,
-    private readonly rabbitmqService: RabbitMQService
+    private readonly rabbitmqService: RabbitMQService,
+    private readonly telegram: TelegramService
   ) {
     this.candleQueue = new CandleQueue(Exchange.BINANCE, this.databaseService, this.rabbitmqService);
   }
@@ -96,6 +99,9 @@ export class BinanceService {
           const htfCandle = await this.buildHTFCandle(symbol, interval, closed1mCandle.openTimeMs, closed1mCandle.closeTimeMs);
           if (htfCandle) {
             this.candleQueue.enqueCandle(htfCandle);
+
+            // Compute indicators & send Telegram notifications for this closed HTF candle
+            await computeAndSendNotification(this.telegram, symbol, interval);
           }
         }
       }
