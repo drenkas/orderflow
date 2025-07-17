@@ -61,9 +61,15 @@ export async function computeAndSendNotification(
 
   // RSI via chart-patterns if доступно, інакше фолбек
   let rsi: number;
+  let rsiArr: number[] | undefined;
   try {
-    const rsiArr: any = ta.RSI.calculateRSI(cpCandles);
-    rsi = Array.isArray(rsiArr) ? rsiArr[rsiArr.length - 1] : (rsiArr as number);
+    const rsiCalcRes: any = ta.RSI.calculateRSI(cpCandles);
+    if (Array.isArray(rsiCalcRes)) {
+      rsiArr = rsiCalcRes as number[];
+      rsi = rsiArr[rsiArr.length - 1];
+    } else {
+      rsi = rsiCalcRes as number;
+    }
   } catch (_) {
     const gains: number[] = [];
     const losses: number[] = [];
@@ -80,16 +86,39 @@ export async function computeAndSendNotification(
 
   const lastClose = closesArr[closesArr.length - 1];
 
-  // Orderflow (last candle)
-  const lastFootprint = candlesAsc[candlesAsc.length - 1];
-  const ofRows: Record<string, OrderFlowRow> = {};
-  for (const price in lastFootprint.priceLevels) {
-    const lvl = lastFootprint.priceLevels[price];
-    ofRows[price] = { volSumAsk: lvl.volSumAsk, volSumBid: lvl.volSumBid };
+  // Detect RSI divergence (bullish / bearish)
+  let rsiDivergence: 'bullish' | 'bearish' | undefined;
+  if (rsiArr && rsiArr.length >= 20) {
+    rsiDivergence = detectRSIDivergence(closesArr.slice(-20), rsiArr.slice(-20));
   }
 
-  const stacked = ta.Orderflow.detectStackedImbalances(ofRows, { stackCount: 5, threshold: 300, tickSize: 0.1 });
-  const hvn = ta.Orderflow.findHighVolumeNodes(ofRows, { threshold: 0.3 });
+  // Orderflow: analyze last few candles for stacked imbalances
+  const ORDERFLOW_LOOKBACK = 3;
+  const STACKED_CONFIG = { stackCount: 3, threshold: 150, tickSize: 0.1 };
+
+  const stacked: IStackedImbalancesResult[] = [];
+
+  const recentFootprints = candlesAsc.slice(-ORDERFLOW_LOOKBACK);
+  recentFootprints.forEach((fp) => {
+    const rows: Record<string, OrderFlowRow> = {};
+    for (const price in fp.priceLevels) {
+      const lvl = fp.priceLevels[price];
+      rows[price] = { volSumAsk: lvl.volSumAsk, volSumBid: lvl.volSumBid };
+    }
+    const s = ta.Orderflow.detectStackedImbalances(rows, STACKED_CONFIG);
+    if (s && s.length) stacked.push(...s);
+  });
+
+  // HVN still по останній свічці (можна розширити, якщо треба)
+  const lastFootprint = recentFootprints[recentFootprints.length - 1];
+  const lastOfRows: Record<string, OrderFlowRow> = {};
+  for (const price in lastFootprint.priceLevels) {
+    const lvl = lastFootprint.priceLevels[price];
+    lastOfRows[price] = { volSumAsk: lvl.volSumAsk, volSumBid: lvl.volSumBid };
+  }
+
+  const hvn = ta.Orderflow.findHighVolumeNodes(lastOfRows, { threshold: 0.3 });
+
   const sr = aggregateStackedLevels(stacked, 0.1, 2);
 
   // VWAP
@@ -117,15 +146,37 @@ export async function computeAndSendNotification(
   lines.push(`— RSI ${rsi.toFixed(1)}${rsiStatus}`);
 
   if (hvn.length > 0) {
-    lines.push(`— HVN @ ${hvn.map((n: any) => n.price.toFixed(2)).join(', ')}`);
+    lines.push(
+      `— HVN @ ${hvn
+        .map((n: any) => {
+          const price = (n.price ?? n.nodePrice)?.toFixed(2);
+          const pct = n.nodeVolumePercent ? `(${(n.nodeVolumePercent * 100).toFixed(0)}%)` : '';
+          return `${price}${pct}`;
+        })
+        .join(', ')}`
+    );
+  }
+
+  // Include stacked imbalance based S/R for all intervals
+  if (sr.resistance.length || sr.support.length) {
+    const res = sr.resistance
+      .map((l) => `${l.price.toFixed(2)}(${l.hits})`)
+      .slice(0, 3)
+      .join(', ');
+    const sup = sr.support
+      .map((l) => `${l.price.toFixed(2)}(${l.hits})`)
+      .slice(0, 3)
+      .join(', ');
+    lines.push(`— Stack SR: R [${res || '—'}] S [${sup || '—'}]`);
+  }
+
+  // Append RSI divergence info
+  if (rsiDivergence) {
+    lines.push(`— RSI divergence detected: ${rsiDivergence}`);
   }
 
   if ([INTERVALS.ONE_HOUR, INTERVALS.FOUR_HOURS, INTERVALS.ONE_DAY].includes(interval)) {
-    if (sr.resistance.length || sr.support.length) {
-      const res = sr.resistance.map((l) => l.price.toFixed(2)).slice(0, 3).join(', ');
-      const sup = sr.support.map((l) => l.price.toFixed(2)).slice(0, 3).join(', ');
-      lines.push(`— SR levels: R [${res || '—'}] S [${sup || '—'}]`);
-    }
+    // Removed duplicate SR levels line (now included for all TFs above)
 
     if (typeof vwap === 'number' && !isNaN(vwap)) {
       const diff = ((lastClose - vwap) / vwap) * 100;
@@ -169,4 +220,44 @@ function aggregateStackedLevels(imbalances: IStackedImbalancesResult[], tickSize
     resistance: levels.filter((l) => l.side === 'ASK' || l.side === 'sell').sort((a, b) => b.price - a.price),
     support: levels.filter((l) => l.side === 'BID' || l.side === 'buy').sort((a, b) => a.price - b.price)
   };
+}
+
+/**
+ * Very simple RSI divergence detector operating on last N candles.
+ * Bullish divergence: price makes lower low while RSI makes higher low.
+ * Bearish divergence: price makes higher high while RSI makes lower high.
+ */
+function detectRSIDivergence(prices: number[], rsiVals: number[]): 'bullish' | 'bearish' | undefined {
+  if (prices.length < 4 || prices.length !== rsiVals.length) return;
+
+  // Helper to find last two extrema indices within the series
+  const findLastTwoExtremes = (arr: number[], comparator: (a: number, b: number) => boolean) => {
+    const extremaIdx: number[] = [];
+    for (let i = arr.length - 2; i >= 1 && extremaIdx.length < 2; i--) {
+      if (comparator(arr[i], arr[i - 1]) && comparator(arr[i], arr[i + 1])) {
+        extremaIdx.push(i);
+      }
+    }
+    return extremaIdx;
+  };
+
+  // Look for lows (bullish divergence)
+  const lowIdx = findLastTwoExtremes(prices, (a, b) => a < b);
+  if (lowIdx.length === 2) {
+    const [recentLow, prevLow] = lowIdx;
+    if (prices[recentLow] < prices[prevLow] && rsiVals[recentLow] > rsiVals[prevLow]) {
+      return 'bullish';
+    }
+  }
+
+  // Look for highs (bearish divergence)
+  const highIdx = findLastTwoExtremes(prices, (a, b) => a > b);
+  if (highIdx.length === 2) {
+    const [recentHigh, prevHigh] = highIdx;
+    if (prices[recentHigh] > prices[prevHigh] && rsiVals[recentHigh] < rsiVals[prevHigh]) {
+      return 'bearish';
+    }
+  }
+
+  return undefined;
 }
